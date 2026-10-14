@@ -59,60 +59,47 @@ def xor_bytes(data: bytes, key: bytes) -> bytes:
 
 
 def obfuscate(code: str) -> str:
+    """Ofuscacion compatible con Roblox (HttpService:Base64Decode)."""
     src = strip_comments(code)
     src = rename_locals(src)
     src = add_junk(src)
 
-    key = bytes(random.randint(1, 255) for _ in range(16))
+    # XOR + Base64 (decode nativo en Roblox)
+    key = bytes(random.randint(1, 255) for _ in range(12))
     enc = xor_bytes(src.encode("utf-8"), key)
     b64 = base64.b64encode(enc).decode("ascii")
     kb64 = base64.b64encode(key).decode("ascii")
 
-    # Fragmentar el payload
-    chunks = [b64[i : i + 80] for i in range(0, len(b64), 80)]
-    names = []
+    # Fragmentar para que no sea un string enorme unico
+    chunks = [b64[i : i + 90] for i in range(0, len(b64), 90)]
     lines = []
     lines.append("-- NovaProtector | protected")
     lines.append(f"-- {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}")
-    lines.append("local bit32=bit32 or{bxor=function(a,b)local r,p=0,1 for _=1,32 do local x,y=a%2,b%2 if x~=y then r=r+p end a=(a-x)/2 b=(b-y)/2 p=p*2 end return r end}")
+    lines.append('local _HS=game:GetService("HttpService")')
+    names = []
     for c in chunks:
-        nm = "_" + random_name(10)
+        nm = "_" + random_name(9)
         names.append(nm)
         lines.append(f'local {nm}="{c}"')
-    cat = "_" + random_name(9)
+    cat = "_" + random_name(8)
     lines.append(f"local {cat}=" + "..".join(names))
-    kn = "_" + random_name(8)
+    kn = "_" + random_name(7)
     lines.append(f'local {kn}="{kb64}"')
+    lines.append(f"local _enc=_HS:Base64Decode({cat})")
+    lines.append(f"local _key=_HS:Base64Decode({kn})")
     lines.append(
-        """local function _b64(s)
-local a="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-s=(s or""):gsub("[^"..a.."=]","")
-return (s:gsub(".",function(x)
-if x=="=" then return "" end
-local r,f="",(a:find(x,1,true)-1)
-for i=6,1,-1 do r=r..(f%2^i-f%2^(i-1)>0 and"1"or"0") end
-return r end):gsub("%d%d%d?%d?%d?%d?%d?%d?",function(x)
-if #x~=8 then return "" end
-local c=0
-for i=1,8 do c=c+(x:sub(i,i)=="1" and 2^(8-i) or 0) end
-return string.char(c) end))
-end"""
+        "local _buf=table.create(#_enc)\n"
+        "for i=1,#_enc do\n"
+        "local b=string.byte(_enc,i)\n"
+        "local k=string.byte(_key,((i-1)%#_key)+1)\n"
+        "local x=bit32.bxor(b,k)\n"
+        "_buf[i]=string.char(x)\n"
+        "end\n"
+        "local _src=table.concat(_buf)\n"
+        "local _fn,_err=loadstring(_src)\n"
+        "if not _fn then error(\"NovaProtector: \"..tostring(_err)) end\n"
+        "_fn()"
     )
-    lines.append(
-        """local function _xor(buf,key)
-local out={}
-for i=1,#buf do
-local b=buf:byte(i)
-local k=key:byte(((i-1)%#key)+1)
-out[i]=string.char(bit32.bxor(b,k))
-end
-return table.concat(out)
-end"""
-    )
-    lines.append(f"local _raw=_xor(_b64({cat}),_b64({kn}))")
-    lines.append("local _fn, _err = loadstring(_raw)")
-    lines.append('if not _fn then error("NovaProtector: load failed") end')
-    lines.append("return _fn()")
     return "\n".join(lines)
 
 
@@ -198,4 +185,4 @@ class handler(BaseHTTPRequestHandler):
             })
         except Exception as e:
             self.send_json(500, {"success": False, "error": str(e)})
-  
+            

@@ -5,14 +5,17 @@ import urllib.parse
 import urllib.request
 import urllib.error
 
-STORE_FALLBACK = ""  # opcional: store_xxx si no hay env
+# Host público del Blob (el de tus URLs: xxxx.public.blob.vercel-storage.com)
+# También se puede poner BLOB_STORE_ID=store_sqe5t8mtibvai8ge en Vercel
+STORE_HOST_FALLBACK = "sqe5t8mtibvai8ge"
 
 
 def store_host():
-    s = (os.environ.get("BLOB_STORE_ID") or STORE_FALLBACK or "").strip()
+    s = (os.environ.get("BLOB_STORE_ID") or "").strip()
     if s.startswith("store_"):
         s = s[len("store_"):]
-    return s.lower()
+    s = (s or STORE_HOST_FALLBACK).strip().lower()
+    return s
 
 
 def is_browser(headers) -> bool:
@@ -20,9 +23,9 @@ def is_browser(headers) -> bool:
     accept = (headers.get("Accept") or "").lower()
     if "roblox" in ua:
         return False
-    if "mozilla" in ua or "chrome" in ua or "safari" in ua or "firefox" in ua:
+    if "mozilla" in ua or "chrome" in ua or "safari" in ua or "firefox" in ua or "edg/" in ua:
         return True
-    if "text/html" in accept:
+    if "text/html" in accept and "*/*" not in accept.split(",")[0]:
         return True
     return False
 
@@ -90,18 +93,29 @@ class handler(BaseHTTPRequestHandler):
                 return
 
             host = store_host()
-            if not host:
-                self._send(500, b"BLOB_STORE_ID not configured")
-                return
-            url = f"https://{host}.public.blob.vercel-storage.com/{file_id}.lua"
-            req = urllib.request.Request(url, headers={"User-Agent": "NovaProtector/1.0"})
-            try:
-                with urllib.request.urlopen(req, timeout=20) as resp:
-                    data = resp.read()
-            except Exception as e:
-                self._send(404, f"not found: {e}".encode())
-                return
-            self._send(200, data, "text/plain; charset=utf-8")
+            candidates = [
+                f"https://{host}.public.blob.vercel-storage.com/{file_id}.lua",
+                f"https://{host}.public.blob.vercel-storage.com/{file_id}",
+            ]
+            # host conocido de producción
+            if host != STORE_HOST_FALLBACK:
+                candidates.append(
+                    f"https://{STORE_HOST_FALLBACK}.public.blob.vercel-storage.com/{file_id}.lua"
+                )
+
+            last = None
+            for url in candidates:
+                try:
+                    req = urllib.request.Request(url, headers={"User-Agent": "NovaProtector/1.0"})
+                    with urllib.request.urlopen(req, timeout=20) as resp:
+                        data = resp.read()
+                    self._send(200, data, "text/plain; charset=utf-8")
+                    return
+                except Exception as e:
+                    last = e
+                    continue
+
+            self._send(404, f"not found: {last}".encode())
         except Exception as e:
-            self._send(500, str
-                       (e).encode())
+            self._send(500, str(e).encode())
+            

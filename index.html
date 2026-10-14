@@ -4,230 +4,156 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#080808">
-  <title>NovaProtector — LuaU Protector</title>
-  <style>
-    :root {
-      color-scheme: dark;
-      --bg: #080808;
-      --panel: #111;
-      --border: #292929;
-      --muted: #999;
-      --accent: #b4f45d;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      background: var(--bg);
-      color: #f5f5f5;
-      font-family: Inter, system-ui, sans-serif;
-    }
-    header {
-      padding: 20px;
-      border-bottom: 1px solid var(--border);
-    }
-    .nav, main, footer {
-      width: min(900px, calc(100% - 32px));
-      margin: auto;
-    }
-    .nav {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-    }
-    .brand { font-size: 18px; font-weight: 800; }
-    a { color: var(--accent); text-decoration: none; }
-    main { padding: 52px 0; }
-    .hero { margin-bottom: 28px; }
-    .eyebrow {
-      color: var(--accent);
-      font-size: 11px;
-      letter-spacing: 2px;
-      font-weight: 800;
-    }
-    h1 { font-size: clamp(32px, 6vw, 48px); line-height: 1.1; }
-    .muted { color: var(--muted); line-height: 1.7; }
-    .panel {
-      border: 1px solid var(--border);
-      background: var(--panel);
-      border-radius: 13px;
-      overflow: hidden;
-      margin-bottom: 18px;
-    }
-    .panel-head {
-      padding: 16px;
-      border-bottom: 1px solid var(--border);
-      font-weight: 700;
-    }
-    textarea {
-      display: block;
-      width: 100%;
-      min-height: 250px;
-      padding: 18px;
-      resize: vertical;
-      border: 0;
-      outline: none;
-      background: #0c0c0c;
-      color: #d9efc5;
-      font: 13px/1.7 monospace;
-    }
-    #out { min-height: 110px; overflow-wrap: anywhere; }
-    .actions { display: flex; flex-wrap: wrap; gap: 10px; padding: 15px; }
-    button {
-      border: 1px solid var(--border);
-      background: #1b1b1b;
-      color: white;
-      border-radius: 8px;
-      padding: 12px 16px;
-      font-weight: 700;
-      cursor: pointer;
-    }
-    button.primary {
-      background: var(--accent);
-      border-color: var(--accent);
-      color: #101010;
-    }
-    button:disabled { opacity: .6; cursor: wait; }
-    #message { padding: 0 16px 16px; font-size: 13px; overflow-wrap: anywhere; }
-    .error { color: #ff7777; }
-    [hidden] { display: none !important; }
-    footer {
-      border-top: 1px solid var(--border);
-      padding: 22px 0;
-      color: var(--muted);
-      font-size: 12px;
-    }
-  </style>
+  <meta name="theme-color" content="#09090b">
+  <meta name="description" content="NovaProtector: herramienta web para procesar y almacenar código LuaU.">
+  <title>NovaProtector — LuaU Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+  <script src="/script.js" defer></script>
 </head>
 <body>
-  <header>
-    <div class="nav">
-      <div class="brand">⬡ NovaProtector</div>
-      <a href="https://discord.gg/9kqrTp2NM"
-         target="_blank" rel="noopener noreferrer">Discord ↗</a>
+  <div class="ambient ambient-one"></div>
+  <div class="ambient ambient-two"></div>
+
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="NovaProtector inicio">
+      <span class="brand-mark">N<span>.</span></span>
+      <span class="brand-copy">
+        <strong>NovaProtector</strong>
+        <small>LUAU STUDIO</small>
+      </span>
+    </a>
+
+    <div class="topbar-right">
+      <span class="service-status">
+        <span class="status-dot"></span>
+        <span id="serviceLabel">Servicio disponible</span>
+      </span>
+      <a class="top-link" href="#editor">Abrir estudio <span>↗</span></a>
     </div>
   </header>
 
-  <main>
+  <main class="container">
     <section class="hero">
-      <div class="eyebrow">LUAU PROTECTION</div>
-      <h1>Tu código.<br><span style="color:var(--accent)">Tu control.</span></h1>
-      <p class="muted">Procesa y publica scripts propios con una interfaz minimalista.</p>
-    </section>
-
-    <section class="panel">
-      <div class="panel-head">Código fuente · LuaU</div>
-      <textarea id="code" spellcheck="false"
-        placeholder="-- Pega aquí tu script LuaU&#10;print('Hola NovaProtector')"></textarea>
-      <div class="actions">
-        <button class="primary" id="protect">Procesar código</button>
-        <button id="clear">Limpiar</button>
+      <div class="eyebrow"><span class="eyebrow-line"></span> DEVELOPER TOOLKIT <span class="eyebrow-version">V1.1</span></div>
+      <h1>Tu código.<br><span>Tu control.</span></h1>
+      <p class="hero-description">
+        Procesa y almacena tus scripts LuaU en un espacio de trabajo
+        limpio, rápido y diseñado para desarrolladores.
+      </p>
+      <div class="hero-points">
+        <span><span class="check">✓</span> Flujo automatizado</span>
+        <span><span class="check">✓</span> Enlace RAW</span>
+        <span><span class="check">✓</span> Compatible con móvil</span>
       </div>
     </section>
 
-    <section class="panel" id="result" hidden>
-      <div class="panel-head">Resultado</div>
-      <textarea id="out" readonly spellcheck="false"
-        aria-label="Enlace del archivo generado"></textarea>
-      <div class="actions">
-        <button class="primary" id="copy">Copiar enlace</button>
-        <button id="download">Descargar enlace</button>
-        <button id="open">Abrir RAW</button>
+    <section class="workspace" id="editor">
+      <div class="workspace-heading">
+        <div>
+          <div class="section-kicker">WORKSPACE / 01</div>
+          <h2>Procesador LuaU</h2>
+          <p>Introduce tu código para comenzar el procesamiento.</p>
+        </div>
+        <span class="private-label"><span>◆</span> EDITOR</span>
       </div>
-      <div id="message" role="status" aria-live="polite"></div>
+
+      <div class="editor-shell">
+        <div class="editor-toolbar">
+          <div class="editor-file">
+            <span class="file-icon">⌘</span>
+            <span>script.lua</span>
+            <span class="file-type">LUAU</span>
+          </div>
+          <span class="editor-live"><span></span> LISTO PARA EDITAR</span>
+        </div>
+
+        <div class="editor-body">
+          <div class="line-numbers" id="lineNumbers">1</div>
+          <textarea
+            id="codeInput"
+            spellcheck="false"
+            autocapitalize="off"
+            autocomplete="off"
+            autocorrect="off"
+            aria-label="Código LuaU"
+            placeholder="-- Pega tu código LuaU aquí&#10;&#10;local mensaje = &quot;Hola mundo&quot;&#10;print(mensaje)"
+          ></textarea>
+        </div>
+
+        <div class="editor-footer">
+          <span><span class="footer-indicator"></span> UTF-8</span>
+          <span id="charCount">0 caracteres</span>
+        </div>
+      </div>
+
+      <div class="action-row">
+        <button id="clearButton" class="button button-secondary" type="button">
+          <span>⌫</span> Limpiar
+        </button>
+        <button id="processButton" class="button button-primary" type="button">
+          <span id="processIcon">✳</span>
+          <span id="processLabel">Procesar código</span>
+          <span class="button-arrow">↗</span>
+        </button>
+      </div>
+
+      <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+
+      <section id="resultPanel" class="result-panel" hidden>
+        <div class="result-heading">
+          <div class="result-icon">✓</div>
+          <div>
+            <h3>Procesamiento completado</h3>
+            <p id="resultDescription">Tu archivo está listo.</p>
+          </div>
+          <span class="result-badge">COMPLETADO</span>
+        </div>
+
+        <label class="result-label" for="resultUrl">ENLACE RAW</label>
+        <div class="result-url-row">
+          <input id="resultUrl" type="text" readonly aria-label="Enlace RAW generado">
+          <button id="copyButton" class="button button-secondary" type="button">Copiar</button>
+        </div>
+
+        <div class="result-actions">
+          <a id="openButton" class="button button-primary" href="#" target="_blank" rel="noopener noreferrer">Abrir resultado ↗</a>
+          <button id="downloadButton" class="button button-secondary" type="button">Descargar .lua ↓</button>
+        </div>
+      </section>
+    </section>
+
+    <section class="feature-grid" aria-label="Características">
+      <article class="feature-card">
+        <div class="feature-symbol">01</div>
+        <h3>Flujo sencillo</h3>
+        <p>Introduce el código, procésalo y obtén el enlace del resultado en un solo lugar.</p>
+      </article>
+      <article class="feature-card">
+        <div class="feature-symbol">02</div>
+        <h3>Almacenamiento remoto</h3>
+        <p>Los archivos procesados se guardan mediante la integración de Vercel Blob.</p>
+      </article>
+      <article class="feature-card">
+        <div class="feature-symbol">03</div>
+        <h3>Diseñado para devs</h3>
+        <p>Interfaz minimalista, editor accesible y controles pensados para tu flujo de trabajo.</p>
+      </article>
+    </section>
+
+    <section class="disclaimer">
+      <span class="disclaimer-icon">i</span>
+      <p>El procesamiento disponible depende de la versión del motor instalado. La compactación actual no sustituye a un ofuscador avanzado ni garantiza la validez de todos los scripts LuaU.</p>
     </section>
   </main>
 
-  <footer>
-    NovaProtector · Utiliza únicamente scripts que tengas autorización para publicar.
+  <footer class="footer">
+    <a class="footer-brand" href="/">NovaProtector<span>.</span></a>
+    <span>LuaU Studio · <span id="year"></span></span>
+    <span class="footer-note">Built for developers.</span>
   </footer>
-
-  <script>
-    const code = document.getElementById("code");
-    const protect = document.getElementById("protect");
-    const clear = document.getElementById("clear");
-    const result = document.getElementById("result");
-    const out = document.getElementById("out");
-    const message = document.getElementById("message");
-
-    function status(text, error = false) {
-      message.textContent = text;
-      message.className = error ? "error" : "";
-    }
-
-    protect.addEventListener("click", async () => {
-      if (!code.value.trim()) {
-        status("Pega un script primero.", true);
-        return;
-      }
-
-      protect.disabled = true;
-      protect.textContent = "Procesando...";
-      result.hidden = false;
-      out.value = "";
-      status("Conectando con el servidor...");
-
-      try {
-        const response = await fetch("/api/protect", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ code: code.value })
-        });
-
-        const data = await response.json();
-
-        if (!response.ok || !data.success) {
-          throw new Error(data.error || "Error al procesar el código.");
-        }
-
-        if (!data.fileUrl) {
-          throw new Error(data.blobError || "No se generó un enlace.");
-        }
-
-        out.value = data.fileUrl;
-        status("Enlace generado. Comprueba que el archivo RAW esté disponible.");
-      } catch (error) {
-        status(error.message || "Error de conexión.", true);
-      } finally {
-        protect.disabled = false;
-        protect.textContent = "Procesar código";
-      }
-    });
-
-    clear.addEventListener("click", () => {
-      code.value = "";
-      out.value = "";
-      result.hidden = true;
-      status("");
-    });
-
-    document.getElementById("copy").addEventListener("click", async () => {
-      if (!out.value) return;
-      try {
-        await navigator.clipboard.writeText(out.value);
-        status("Enlace copiado.");
-      } catch {
-        out.select();
-        status("Selecciona y copia el enlace manualmente.");
-      }
-    });
-
-    document.getElementById("download").addEventListener("click", () => {
-      if (!out.value) return;
-      const blob = new Blob([out.value], { type: "text/plain;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "novaprotector-link.txt";
-      a.click();
-      URL.revokeObjectURL(url);
-    });
-
-    document.getElementById("open").addEventListener("click", () => {
-      if (!out.value) return;
-      window.open(out.value, "_blank", "noopener,noreferrer");
-    });
-  </script>
 </body>
-</html>
+        </html>
+        

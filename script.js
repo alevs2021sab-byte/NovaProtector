@@ -1,54 +1,248 @@
-const codeEl = document.getElementById("code");
-const btn = document.getElementById("btn");
-const outBox = document.getElementById("outBox");
-const out = document.getElementById("out");
-const copy = document.getElementById("copy");
-const msg = document.getElementById("msg");
 
-btn.addEventListener("click", async () => {
-  const code = codeEl.value.trim();
-  if (!code) {
-    alert("Pega un script primero.");
+const codeInput = document.getElementById("codeInput");
+const processButton = document.getElementById("processButton");
+const processLabel = document.getElementById("processLabel");
+const processIcon = document.getElementById("processIcon");
+const clearButton = document.getElementById("clearButton");
+const charCount = document.getElementById("charCount");
+const lineNumbers = document.getElementById("lineNumbers");
+const notice = document.getElementById("notice");
+const resultPanel = document.getElementById("resultPanel");
+const resultUrl = document.getElementById("resultUrl");
+const resultDescription = document.getElementById("resultDescription");
+const copyButton = document.getElementById("copyButton");
+const openButton = document.getElementById("openButton");
+const downloadButton = document.getElementById("downloadButton");
+const serviceLabel = document.getElementById("serviceLabel");
+
+let lastResultUrl = "";
+let lastFileName = "novaprotector.lua";
+
+document.getElementById("year").textContent = new Date().getFullYear();
+
+function updateEditorInfo() {
+  const text = codeInput.value;
+  const lines = Math.max(1, text.split("\n").length);
+
+  charCount.textContent =
+    `${text.length.toLocaleString("es-PE")} caracteres`;
+
+  lineNumbers.textContent = Array.from(
+    { length: lines },
+    (_, index) => index + 1
+  ).join("\n");
+}
+
+function showNotice(message, type = "") {
+  notice.textContent = message;
+  notice.className = "notice";
+
+  if (type) {
+    notice.classList.add(type);
+  }
+
+  notice.hidden = false;
+}
+
+function hideNotice() {
+  notice.hidden = true;
+  notice.textContent = "";
+  notice.className = "notice";
+}
+
+function resetResult() {
+  resultPanel.hidden = true;
+  lastResultUrl = "";
+  resultUrl.value = "";
+}
+
+async function checkService() {
+  try {
+    const response = await fetch("/api/protect", {
+      method: "GET",
+      cache: "no-store"
+    });
+
+    const data = await response.json();
+
+    if (response.ok && data.success) {
+      serviceLabel.textContent = data.blobConfigured
+        ? "Servicio conectado"
+        : "Falta configurar Blob";
+    } else {
+      serviceLabel.textContent = "Servicio no disponible";
+    }
+  } catch {
+    serviceLabel.textContent = "Servicio sin conexión";
+  }
+}
+
+async function processCode() {
+  const code = codeInput.value;
+
+  if (!code.trim()) {
+    showNotice("Introduce tu código LuaU antes de continuar.", "error");
+    codeInput.focus();
     return;
   }
-  btn.disabled = true;
-  btn.textContent = "Ofuscando...";
-  msg.textContent = "";
-  msg.className = "msg";
+
+  if (new TextEncoder().encode(code).length > 200000) {
+    showNotice("El código supera el límite permitido de 200 KB.", "error");
+    return;
+  }
+
+  hideNotice();
+  resetResult();
+
+  processButton.disabled = true;
+  clearButton.disabled = true;
+  processIcon.textContent = "◌";
+  processLabel.textContent = "Procesando…";
 
   try {
-    const res = await fetch("/api/protect", {
+    const response = await fetch("/api/protect", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code }),
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ code })
     });
-    const data = await res.json();
-    if (!data.success) throw new Error(data.error || "Error desconocido");
-    if (!data.fileUrl) throw new Error(data.blobError || "No se pudo guardar el script");
 
-    const ls = `loadstring(game:HttpGet("${data.fileUrl}"))()`;
-    out.value = ls;
-    outBox.classList.remove("hidden");
-    msg.textContent = "Listo. Copia el loadstring.";
-  } catch (e) {
-    outBox.classList.remove("hidden");
-    out.value = "";
-    msg.textContent = String(e.message || e);
-    msg.className = "msg err";
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok || !data.success) {
+      throw new Error(
+        data.error || `No se pudo procesar el código (HTTP ${response.status}).`
+      );
+    }
+
+    if (
+      typeof data.fileUrl !== "string" ||
+      !data.fileUrl.startsWith(window.location.origin + "/api/raw?")
+    ) {
+      throw new Error("El servidor no devolvió un enlace RAW válido.");
+    }
+
+    lastResultUrl = data.fileUrl;
+    lastFileName = `novaprotector-${data.fileId || "result"}.lua`;
+
+    resultUrl.value = lastResultUrl;
+    openButton.href = lastResultUrl;
+    resultDescription.textContent =
+      data.message || "El archivo se guardó correctamente.";
+
+    resultPanel.hidden = false;
+    showNotice("El servidor terminó de procesar tu solicitud.", "success");
+
+    resultPanel.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest"
+    });
+  } catch (error) {
+    showNotice(
+      error.message || "No se pudo conectar con NovaProtector.",
+      "error"
+    );
   } finally {
-    btn.disabled = false;
-    btn.textContent = "Obfuscar código";
+    processButton.disabled = false;
+    clearButton.disabled = false;
+    processIcon.textContent = "✳";
+    processLabel.textContent = "Procesar código";
+  }
+}
+
+async function copyResultUrl() {
+  if (!lastResultUrl) return;
+
+  try {
+    await navigator.clipboard.writeText(lastResultUrl);
+    copyButton.textContent = "Copiado ✓";
+  } catch {
+    resultUrl.focus();
+    resultUrl.select();
+
+    const copied = document.execCommand("copy");
+    copyButton.textContent = copied ? "Copiado ✓" : "Selecciona y copia";
+
+    if (!copied) {
+      showNotice("Selecciona el enlace y cópialo manualmente.", "error");
+    }
+  }
+
+  window.setTimeout(() => {
+    copyButton.textContent = "Copiar";
+  }, 1800);
+}
+
+async function downloadResult() {
+  if (!lastResultUrl) return;
+
+  downloadButton.disabled = true;
+  downloadButton.textContent = "Descargando…";
+
+  try {
+    const response = await fetch(lastResultUrl, {
+      cache: "no-store"
+    });
+
+    if (!response.ok) {
+      throw new Error("No se pudo recuperar el archivo RAW.");
+    }
+
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = objectUrl;
+    link.download = lastFileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    URL.revokeObjectURL(objectUrl);
+  } catch (error) {
+    showNotice(error.message || "Error al descargar el archivo.", "error");
+  } finally {
+    downloadButton.disabled = false;
+    downloadButton.textContent = "Descargar .lua ↓";
+  }
+}
+
+processButton.addEventListener("click", processCode);
+
+clearButton.addEventListener("click", () => {
+  codeInput.value = "";
+  updateEditorInfo();
+  hideNotice();
+  resetResult();
+  codeInput.focus();
+});
+
+copyButton.addEventListener("click", copyResultUrl);
+downloadButton.addEventListener("click", downloadResult);
+
+codeInput.addEventListener("input", () => {
+  updateEditorInfo();
+  hideNotice();
+});
+
+codeInput.addEventListener("keydown", event => {
+  if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+    event.preventDefault();
+    processCode();
+  }
+
+  // Inserta una tabulación en el editor sin perder el texto.
+  if (event.key === "Tab") {
+    event.preventDefault();
+
+    const start = codeInput.selectionStart;
+    const end = codeInput.selectionEnd;
+
+    codeInput.setRangeText("    ", start, end, "end");
+    updateEditorInfo();
   }
 });
 
-copy.addEventListener("click", async () => {
-  try {
-    await navigator.clipboard.writeText(out.value);
-    msg.textContent = "Copiado.";
-    msg.className = "msg";
-  } catch {
-    out.select();
-    document.execCommand("copy");
-    msg.textContent = "Copiado.";
-  }
-});
+updateEditorInfo();
+checkService();

@@ -59,48 +59,60 @@ def xor_bytes(data: bytes, key: bytes) -> bytes:
 
 
 def obfuscate(code: str) -> str:
-    """Ofuscacion compatible con Roblox (HttpService:Base64Decode)."""
+    """Ofuscacion Roblox-safe: XOR + Base64 en Lua puro (sin HttpService:Base64Decode)."""
     src = strip_comments(code)
     src = rename_locals(src)
     src = add_junk(src)
 
-    # XOR + Base64 (decode nativo en Roblox)
     key = bytes(random.randint(1, 255) for _ in range(12))
     enc = xor_bytes(src.encode("utf-8"), key)
     b64 = base64.b64encode(enc).decode("ascii")
     kb64 = base64.b64encode(key).decode("ascii")
 
-    # Fragmentar para que no sea un string enorme unico
     chunks = [b64[i : i + 90] for i in range(0, len(b64), 90)]
     lines = []
     lines.append("-- NovaProtector | protected")
-    lines.append(f"-- {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}")
-    lines.append('local _HS=game:GetService("HttpService")')
+    lines.append("-- " + datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"))
+
     names = []
     for c in chunks:
         nm = "_" + random_name(9)
         names.append(nm)
-        lines.append(f'local {nm}="{c}"')
+        lines.append("local " + nm + '="' + c + '"')
     cat = "_" + random_name(8)
-    lines.append(f"local {cat}=" + "..".join(names))
+    lines.append("local " + cat + "=" + "..".join(names))
     kn = "_" + random_name(7)
-    lines.append(f'local {kn}="{kb64}"')
-    lines.append(f"local _enc=_HS:Base64Decode({cat})")
-    lines.append(f"local _key=_HS:Base64Decode({kn})")
-    lines.append(
-        "local _buf=table.create(#_enc)\n"
-        "for i=1,#_enc do\n"
-        "local b=string.byte(_enc,i)\n"
-        "local k=string.byte(_key,((i-1)%#_key)+1)\n"
-        "local x=bit32.bxor(b,k)\n"
-        "_buf[i]=string.char(x)\n"
-        "end\n"
-        "local _src=table.concat(_buf)\n"
-        "local _fn,_err=loadstring(_src)\n"
-        "if not _fn then error(\"NovaProtector: \"..tostring(_err)) end\n"
-        "_fn()"
-    )
-    return "\n".join(lines)
+    lines.append("local " + kn + '="' + kb64 + '"')
+
+    lines.append("local function _D(data)")
+    lines.append("local b='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'")
+    lines.append("data=string.gsub(data,'[^'..b..'=]','')")
+    lines.append("return (data:gsub('.',function(x)")
+    lines.append("if x=='=' then return '' end")
+    lines.append("local r,f='',(b:find(x)-1)")
+    lines.append("for i=6,1,-1 do r=r..(f%2^i-f%2^(i-1)>0 and '1' or '0') end")
+    lines.append("return r")
+    lines.append("end):gsub('%d%d%d?%d?%d?%d?%d?%d?',function(x)")
+    lines.append("if #x~=8 then return '' end")
+    lines.append("local c=0")
+    lines.append("for i=1,8 do c=c+(x:sub(i,i)=='1' and 2^(8-i) or 0) end")
+    lines.append("return string.char(c)")
+    lines.append("end))")
+    lines.append("end")
+    lines.append("local function _X(s,k)")
+    lines.append("local o=table.create(#s)")
+    lines.append("for i=1,#s do")
+    lines.append("local a=string.byte(s,i)")
+    lines.append("local bb=string.byte(k,((i-1)%#k)+1)")
+    lines.append("o[i]=string.char(bit32.bxor(a,bb))")
+    lines.append("end")
+    lines.append("return table.concat(o)")
+    lines.append("end")
+    lines.append("local _src=_X(_D(" + cat + "),_D(" + kn + "))")
+    lines.append("local _fn,_err=loadstring(_src)")
+    lines.append('if not _fn then error("NovaProtector: "..tostring(_err)) end')
+    lines.append("_fn()")
+    return chr(10).join(lines)
 
 
 def upload_to_blob(pathname: str, content: str) -> str:
@@ -185,4 +197,4 @@ class handler(BaseHTTPRequestHandler):
             })
         except Exception as e:
             self.send_json(500, {"success": False, "error": str(e)})
-            
+    

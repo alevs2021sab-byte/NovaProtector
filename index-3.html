@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NovaProtector</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="panel">
+    <header>
+      <div class="logo">🛡️ NovaProtector</div>
+      <p class="sub">Ofuscador LuaU · loadstring listo</p>
+    </header>
+
+    <label for="code">Lo que quieres ofuscar</label>
+    <textarea id="code" placeholder="Pega aquí tu script Lua..."></textarea>
+
+    <button id="btn" type="button">Obfuscar código</button>
+
+    <div id="outBox" class="out hidden">
+      <label>Loadstring</label>
+      <textarea id="out" readonly></textarea>
+      <button id="copy" type="button" class="secondary">Copiar</button>
+      <p id="msg" class="msg"></p>
+    </div>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>

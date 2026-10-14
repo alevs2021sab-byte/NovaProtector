@@ -4,37 +4,36 @@ import re
 import urllib.parse
 import urllib.request
 
-STORE_HOST_FALLBACK = "sqe5t8mtibvai8ge"
+# Hosts públicos conocidos (prioridad: env, luego estos)
+KNOWN_HOSTS = [
+    "sqe5t8mtibvai8ge",  # store actual de producción
+]
 
 
-def store_host():
+def candidate_hosts():
+    hosts = []
     s = (os.environ.get("BLOB_STORE_ID") or "").strip()
     if s.startswith("store_"):
         s = s[len("store_"):]
-    return (s or STORE_HOST_FALLBACK).strip().lower()
+    if s:
+        hosts.append(s.lower())
+    for h in KNOWN_HOSTS:
+        if h not in hosts:
+            hosts.append(h)
+    return hosts
 
 
 def is_browser(headers) -> bool:
-    """
-    Solo mostrar la landing negra si es navegación real de browser.
-    Los executors (HttpGet) casi nunca envían Sec-Fetch-Dest: document.
-    Por defecto devolvemos LUA para que el loadstring siempre funcione.
-    """
     ua = (headers.get("User-Agent") or "").lower()
     if "roblox" in ua:
         return False
-
     dest = (headers.get("Sec-Fetch-Dest") or "").lower()
     mode = (headers.get("Sec-Fetch-Mode") or "").lower()
-    # Chrome/Firefox al abrir el link en pestaña
     if dest == "document" or mode == "navigate":
         return True
-
-    # Fallback: HTML solo si pide text/html Y es Mozilla (sin ser curl/python)
     accept = (headers.get("Accept") or "").lower()
     if accept.startswith("text/html") and "mozilla" in ua:
         return True
-
     return False
 
 
@@ -96,20 +95,24 @@ class handler(BaseHTTPRequestHandler):
                 return
 
             if is_browser(self.headers):
-                html = HTML.format(file_id=file_id)
-                self._send(200, html.encode("utf-8"), "text/html; charset=utf-8")
+                self._send(200, HTML.format(file_id=file_id).encode("utf-8"), "text/html; charset=utf-8")
                 return
 
-            host = store_host()
-            url = f"https://{host}.public.blob.vercel-storage.com/{file_id}.lua"
-            req = urllib.request.Request(url, headers={"User-Agent": "NovaProtector/1.0"})
-            try:
-                with urllib.request.urlopen(req, timeout=20) as resp:
-                    data = resp.read()
-            except Exception as e:
-                self._send(404, f"not found: {e}".encode())
-                return
-            self._send(200, data, "text/plain; charset=utf-8")
+            last = None
+            for host in candidate_hosts():
+                for path in (f"{file_id}.lua", file_id):
+                    url = f"https://{host}.public.blob.vercel-storage.com/{path}"
+                    try:
+                        req = urllib.request.Request(url, headers={"User-Agent": "NovaProtector/1.0"})
+                        with urllib.request.urlopen(req, timeout=20) as resp:
+                            data = resp.read()
+                        self._send(200, data, "text/plain; charset=utf-8")
+                        return
+                    except Exception as e:
+                        last = e
+                        continue
+
+            self._send(404, f"not found: {last}".encode())
         except Exception as e:
-            self._send(500,
-                       str(e).encode())
+            self._send(500, s
+        tr(e).encode())

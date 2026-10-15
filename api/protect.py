@@ -1,202 +1,223 @@
-
 from http.server import BaseHTTPRequestHandler
 import json
+import re
 import os
-import secrets
+import random
+import string
+import base64
+import hashlib
 import urllib.parse
 import urllib.request
 import urllib.error
+from datetime import datetime, timezone
 
-MAX_BYTES = 200_000
-BASE_URL = "https://novaprotector.vercel.app"
-BLOB_UPLOAD_URL = "https://blob.vercel-storage.com/"
-
-
-def send_json(handler, status, data):
-    body = json.dumps(data, ensure_ascii=False).encode("utf-8")
-    handler.send_response(status)
-    handler.send_header(
-        "Content-Type", "application/json; charset=utf-8"
-    )
-    handler.send_header("Cache-Control", "no-store")
-    handler.send_header("X-Content-Type-Options", "nosniff")
-    handler.send_header("Content-Length", str(len(body)))
-    handler.end_headers()
-    handler.wfile.write(body)
+DOMAIN = "https://novaprotector.vercel.app"
 
 
-def process_luau(source):
-    if not source or not source.strip():
-        raise ValueError("Introduce código Luau.")
-
-    if "\x00" in source:
-        raise ValueError("El código contiene caracteres no válidos.")
-
-    # No afirmar que el código está ofuscado sin un motor real.
-    return source
+def random_name(n=8):
+    return "".join(random.choices(string.ascii_letters, k=n))
 
 
-def upload_to_blob(file_id, code):
-    token = (
-        os.environ.get("BLOB_READ_WRITE_TOKEN")
-        or os.environ.get("VERCEL_BLOB_READ_WRITE_TOKEN")
-        or ""
-    ).strip()
+def strip_comments(code: str) -> str:
+    code = re.sub(r"--\[\[[\s\S]*?\]\]", "", code)
+    code = re.sub(r"--[^\r\n]*", "", code)
+    lines = [ln.rstrip() for ln in code.splitlines()]
+    return re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
 
+
+def rename_locals(code: str) -> str:
+    found = re.findall(r"\blocal\s+([a-zA-Z_][a-zA-Z0-9_]*)", code)
+    reserved = {
+        "self", "script", "game", "workspace", "print", "warn", "error",
+        "typeof", "type", "pairs", "ipairs", "next", "select", "unpack",
+        "table", "string", "math", "task", "wait", "spawn", "delay", "shared",
+        "bit32", "utf8", "coroutine", "debug", "os", "tick", "time",
+        "loadstring", "load", "pcall", "xpcall", "tostring", "tonumber",
+        "Instance", "Enum", "Color3", "UDim2", "Vector3", "CFrame",
+    }
+    mapping = {}
+    for name in set(found):
+        if name not in reserved:
+            mapping[name] = "_" + random_name(7)
+    for old, new in mapping.items():
+        code = re.sub(rf"\b{re.escape(old)}\b", new, code)
+    return code
+
+
+def add_junk(code: str) -> str:
+    junk = [
+        f"local {random_name()}={random.randint(1,999)};",
+        f"if false then local {random_name()}=nil end;",
+    ]
+    out = []
+    for line in code.splitlines():
+        out.append(line)
+        if line.strip() and random.random() > 0.82:
+            out.append(random.choice(junk))
+    return "\n".join(out)
+
+
+def xor_bytes(data: bytes, key: bytes) -> bytes:
+    return bytes(b ^ key[i % len(key)] for i, b in enumerate(data))
+
+
+def obfuscate(code: str) -> str:
+    """
+    Ofuscacion compatible con Roblox/Delta:
+    - sin HttpService:Base64Decode
+    - Base64 + XOR en Lua puro
+    - loadstring al final
+    """
+    src = strip_comments(code)
+    src = rename_locals(src)
+    src = add_junk(src)
+
+    key = bytes(random.randint(1, 255) for _ in range(12))
+    enc = xor_bytes(src.encode("utf-8"), key)
+    b64 = base64.b64encode(enc).decode("ascii")
+    kb64 = base64.b64encode(key).decode("ascii")
+
+    chunks = [b64[i : i + 90] for i in range(0, len(b64), 90)]
+    lines = []
+    lines.append("-- NovaProtector | protected")
+    lines.append("-- " + datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"))
+
+    names = []
+    for c in chunks:
+        nm = "_" + random_name(9)
+        names.append(nm)
+        lines.append("local " + nm + '="' + c + '"')
+    cat = "_" + random_name(8)
+    lines.append("local " + cat + "=" + "..".join(names))
+    kn = "_" + random_name(7)
+    lines.append("local " + kn + '="' + kb64 + '"')
+
+    # Decodificador puro (sin HttpService)
+    lines.append("local function _D(data)")
+    lines.append("local b='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'")
+    lines.append("data=string.gsub(data,'[^'..b..'=]','')")
+    lines.append("return (data:gsub('.',function(x)")
+    lines.append("if x=='=' then return '' end")
+    lines.append("local r,f='',(b:find(x)-1)")
+    lines.append("for i=6,1,-1 do r=r..(f%2^i-f%2^(i-1)>0 and '1' or '0') end")
+    lines.append("return r")
+    lines.append("end):gsub('%d%d%d?%d?%d?%d?%d?%d?',function(x)")
+    lines.append("if #x~=8 then return '' end")
+    lines.append("local c=0")
+    lines.append("for i=1,8 do c=c+(x:sub(i,i)=='1' and 2^(8-i) or 0) end")
+    lines.append("return string.char(c)")
+    lines.append("end))")
+    lines.append("end")
+
+    lines.append("local function _X(s,k)")
+    lines.append("local o={}")
+    lines.append("for i=1,#s do")
+    lines.append("local a=string.byte(s,i)")
+    lines.append("local bb=string.byte(k,((i-1)%#k)+1)")
+    lines.append("o[i]=string.char(bit32.bxor(a,bb))")
+    lines.append("end")
+    lines.append("return table.concat(o)")
+    lines.append("end")
+
+    lines.append("local _src=_X(_D(" + cat + "),_D(" + kn + "))")
+    lines.append("local _fn,_err=loadstring(_src)")
+    lines.append('if not _fn then error("NovaProtector: "..tostring(_err)) end')
+    lines.append("_fn()")
+    return "\n".join(lines)
+
+
+def upload_to_blob(pathname: str, content: str) -> str:
+    token = (os.environ.get("BLOB_READ_WRITE_TOKEN") or "").strip()
     if not token:
-        raise RuntimeError(
-            "Falta BLOB_READ_WRITE_TOKEN en las variables de Vercel."
-        )
+        raise RuntimeError("Falta BLOB_READ_WRITE_TOKEN")
 
-    url = BLOB_UPLOAD_URL + urllib.parse.quote(
-        file_id + ".lua", safe=""
-    )
+    safe = re.sub(r"[^a-zA-Z0-9._-]", "", pathname)
+    if not safe.endswith(".lua"):
+        safe += ".lua"
 
-    request = urllib.request.Request(
-        url,
-        data=code.encode("utf-8"),
-        method="PUT",
-        headers={
-            "Authorization": "Bearer " + token,
-            "x-api-version": "7",
-            "x-content-type": "text/plain; charset=utf-8",
-            "x-add-random-suffix": "0",
-        },
-    )
-
+    body = content.encode("utf-8")
+    url = "https://blob.vercel-storage.com/" + urllib.parse.quote(safe)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "x-api-version": "7",
+        "x-content-type": "text/plain; charset=utf-8",
+        "x-add-random-suffix": "0",
+    }
+    req = urllib.request.Request(url, data=body, method="PUT", headers=headers)
     try:
-        with urllib.request.urlopen(request, timeout=25) as response:
-            result = json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        detail = exc.read().decode(
-            "utf-8", errors="replace"
-        )[:250]
-        raise RuntimeError(
-            f"Error de Vercel Blob ({exc.code}): {detail}"
-        ) from exc
-    except urllib.error.URLError as exc:
-        raise RuntimeError(
-            "No se pudo conectar con Vercel Blob."
-        ) from exc
-
-    blob_url = result.get("url", "")
-    parsed = urllib.parse.urlparse(blob_url)
-
-    if (
-        parsed.scheme != "https"
-        or not (parsed.hostname or "").endswith(
-            ".public.blob.vercel-storage.com"
-        )
-        or parsed.username
-        or parsed.password
-    ):
-        raise RuntimeError("Vercel Blob devolvió una URL no válida.")
-
-    return blob_url
+        with urllib.request.urlopen(req, timeout=25) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        err = e.read().decode("utf-8", errors="ignore")
+        raise RuntimeError(f"HTTP {e.code}: {err}") from e
+    return data.get("url") or data.get("downloadUrl")
 
 
 class handler(BaseHTTPRequestHandler):
-    def log_message(self, *_):
+    def log_message(self, *args):
         pass
 
-    def do_GET(self):
-        configured = bool(
-            (
-                os.environ.get("BLOB_READ_WRITE_TOKEN")
-                or os.environ.get("VERCEL_BLOB_READ_WRITE_TOKEN")
-                or ""
-            ).strip()
-        )
+    def send_json(self, status, obj):
+        body = json.dumps(obj, ensure_ascii=False).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS, GET")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
 
-        send_json(self, 200, {
+    def do_OPTIONS(self):
+        self.send_json(200, {"ok": True})
+
+    def do_GET(self):
+        self.send_json(200, {
             "success": True,
             "service": "NovaProtector",
-            "blobConfigured": configured,
-            "mode": "safe-storage",
-            "obfuscationReady": False,
+            "blobConfigured": bool(os.environ.get("BLOB_READ_WRITE_TOKEN")),
+            "mode": "obfuscate",
+            "obfuscationReady": True,
         })
 
     def do_POST(self):
         try:
-            length = int(self.headers.get("Content-Length", "0"))
-
-            if length <= 0:
-                send_json(self, 400, {
-                    "success": False,
-                    "error": "La solicitud está vacía.",
-                })
-                return
-
-            if length > MAX_BYTES:
-                send_json(self, 413, {
-                    "success": False,
-                    "error": "El límite es de 200 KB.",
-                })
-                return
-
-            body = self.rfile.read(length)
-            payload = json.loads(body.decode("utf-8"))
-
-            if not isinstance(payload, dict):
-                send_json(self, 400, {
-                    "success": False,
-                    "error": "El cuerpo debe ser un objeto JSON.",
-                })
-                return
-
-            code = payload.get("code")
-
+            n = int(self.headers.get("Content-Length", 0))
+            raw = self.rfile.read(n) if n else b"{}"
+            data = json.loads(raw.decode("utf-8"))
+            code = data.get("code", "")
             if not isinstance(code, str) or not code.strip():
-                send_json(self, 400, {
-                    "success": False,
-                    "error": "Introduce código Luau.",
-                })
+                self.send_json(400, {"success": False, "error": "Codigo vacio"})
                 return
 
-            if len(code.encode("utf-8")) > MAX_BYTES:
-                send_json(self, 413, {
-                    "success": False,
-                    "error": "El código supera los 200 KB.",
-                })
-                return
+            protected = obfuscate(code)
+            file_id = hashlib.md5((protected + str(random.random())).encode()).hexdigest()[:16]
 
-            processed = process_luau(code)
-            file_id = secrets.token_hex(16)
-            blob_url = upload_to_blob(file_id, processed)
+            blob_url = None
+            blob_error = None
+            file_url = None
+            try:
+                blob_url = upload_to_blob(f"{file_id}.lua", protected)
+                # loadstring corto con tu dominio (+ url del blob por si raw lo usa)
+                q = urllib.parse.urlencode({"id": file_id, "url": blob_url})
+                file_url = f"{DOMAIN}/api/raw?{q}"
+            except Exception as e:
+                blob_error = str(e)
 
-            file_url = BASE_URL + "/api/raw?" + (
-                urllib.parse.urlencode({
-                    "id": file_id,
-                    "url": blob_url,
-                })
-            )
-
-            send_json(self, 200, {
+            self.send_json(200, {
                 "success": True,
                 "fileId": file_id,
                 "blobUrl": blob_url,
                 "fileUrl": file_url,
-                "transformed": False,
-                "mode": "safe-storage",
-                "message": (
-                    "Archivo guardado. La ofuscación todavía "
-                    "no está implementada."
-                ),
+                "transformed": True,
+                "mode": "obfuscate",
+                "message": "Codigo ofuscado y guardado.",
+                "blobError": blob_error,
+                "protectedCode": protected,
             })
-
-        except (ValueError, UnicodeDecodeError):
-            send_json(self, 400, {
-                "success": False,
-                "error": "JSON inválido o código incorrecto.",
-            })
-        except Exception:
-            send_json(self, 500, {
-                "success": False,
-                "error": (
-                    "No se pudo procesar la solicitud. "
-                    "Revisa los registros de Vercel."
-                ),
-            })
+        except Exception as e:
+            self.send_json(500, {"success": False, "error": str(e)})
 
 
 app = handler
+    

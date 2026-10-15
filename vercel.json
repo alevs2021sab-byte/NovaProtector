@@ -2,7 +2,7 @@
 "$schema": "https://openapi.vercel.sh/vercel.json",
 "builds": [
 {
-"src": "index.html",
+"src": ".html",
 "use": "@vercel/static"
 },
 {
@@ -18,7 +18,7 @@
 "use": "@vercel/python"
 },
 {
-"src": "api/.js",
+"src": "api/*.js",
 "use": "@vercel/node"
 }
 ]

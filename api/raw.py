@@ -1,141 +1,83 @@
 
 from http.server import BaseHTTPRequestHandler
-from urllib.parse import urlparse, parse_qs
-from urllib.request import Request, build_opener, HTTPHandler
-from urllib.error import HTTPError, URLError
 import json
 import re
-import posixpath
+import urllib.parse
+import urllib.request
+import urllib.error
 
 MAX_BYTES = 200_000
-BLOB_SUFFIX = ".public.blob.vercel-storage.com"
-
-
-def send_json(handler, status, data):
-    body = json.dumps(data, ensure_ascii=False).encode("utf-8")
-    handler.send_response(status)
-    handler.send_header(
-        "Content-Type", "application/json; charset=utf-8"
-    )
-    handler.send_header("Cache-Control", "no-store")
-    handler.send_header("X-Content-Type-Options", "nosniff")
-    handler.send_header("Content-Length", str(len(body)))
-    handler.end_headers()
-    handler.wfile.write(body)
-
-
-def send_text(handler, status, body):
-    data = body.encode("utf-8")
-    handler.send_response(status)
-    handler.send_header(
-        "Content-Type", "text/plain; charset=utf-8"
-    )
-    handler.send_header("Cache-Control", "no-store")
-    handler.send_header("X-Content-Type-Options", "nosniff")
-    handler.send_header("Content-Length", str(len(data)))
-    handler.end_headers()
-    handler.wfile.write(data)
-
-
-class NoRedirectHandler(HTTPHandler):
-    pass
+ALLOWED_HOST_SUFFIX = ".public.blob.vercel-storage.com"
 
 
 class handler(BaseHTTPRequestHandler):
     def log_message(self, *_):
         pass
 
+    def send_text(self, status, text):
+        body = text.encode("utf-8")
+        self.send_response(status)
+        self.send_header(
+            "Content-Type", "text/plain; charset=utf-8"
+        )
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
     def do_GET(self):
-        request_url = urlparse(self.path)
-        params = parse_qs(
-            request_url.query,
-            keep_blank_values=True
+        params = urllib.parse.parse_qs(
+            urllib.parse.urlparse(self.path).query
         )
 
-        file_ids = params.get("id", [])
-        blob_urls = params.get("url", [])
+        file_id = params.get("id", [""])[0]
+        blob_url = params.get("url", [""])[0]
 
-        if len(file_ids) != 1 or len(blob_urls) != 1:
-            send_json(self, 400, {
-                "success": False,
-                "error": "ID inválido"
-            })
+        if not re.fullmatch(r"[a-f0-9]{32}", file_id):
+            self.send_text(400, "Identificador no válido.")
             return
 
-        file_id = file_ids[0]
-        blob_url = blob_urls[0]
-
-        if not re.fullmatch(r"[0-9a-f]{16}", file_id):
-            send_json(self, 400, {
-                "success": False,
-                "error": "ID inválido"
-            })
-            return
-
-        parsed = urlparse(blob_url)
+        parsed = urllib.parse.urlparse(blob_url)
+        hostname = (parsed.hostname or "").lower()
 
         if (
             parsed.scheme != "https"
-            or not parsed.hostname
-            or not parsed.hostname.endswith(BLOB_SUFFIX)
-            or parsed.username is not None
-            or parsed.password is not None
-            or parsed.port is not None
+            or not hostname.endswith(ALLOWED_HOST_SUFFIX)
+            or parsed.username
+            or parsed.password
+            or parsed.port not in (None, 443)
             or parsed.query
             or parsed.fragment
-            or posixpath.basename(parsed.path) != file_id + ".lua"
+            or not parsed.path.endswith("/" + file_id + ".lua")
         ):
-            send_json(self, 400, {
-                "success": False,
-                "error": "URL de archivo inválida"
-            })
+            self.send_text(400, "URL de archivo no válida.")
             return
 
+        request = urllib.request.Request(
+            blob_url,
+            headers={"Accept": "text/plain"},
+            method="GET",
+        )
+
         try:
-            request = Request(
-                blob_url,
-                headers={
-                    "User-Agent": "NovaProtector/1.0",
-                    "Accept": "text/plain"
-                },
-                method="GET"
-            )
+            with urllib.request.urlopen(request, timeout=15) as response:
+                data = response.read(MAX_BYTES + 1)
 
-            with build_opener().open(request, timeout=15) as response:
-                content = response.read(MAX_BYTES + 1)
-
-            if len(content) > MAX_BYTES:
-                send_json(self, 413, {
-                    "success": False,
-                    "error": "El archivo supera los 200 KB"
-                })
+            if len(data) > MAX_BYTES:
+                self.send_text(413, "El archivo supera los 200 KB.")
                 return
 
-            send_text(
-                self,
-                200,
-                content.decode("utf-8", errors="strict")
-            )
+            content = data.decode("utf-8")
+            self.send_text(200, content)
 
-        except HTTPError as exc:
-            send_json(self, 502, {
-                "success": False,
-                "error": "No se pudo recuperar el archivo de Blob",
-                "upstreamStatus": exc.code
-            })
-        except (URLError, TimeoutError):
-            send_json(self, 502, {
-                "success": False,
-                "error": "No se pudo conectar con Blob"
-            })
-        except UnicodeDecodeError:
-            send_json(self, 502, {
-                "success": False,
-                "error": "El archivo no contiene texto UTF-8 válido"
-            })
-        except Exception:
-            send_json(self, 500, {
-                "success": False,
-                "error": "Error interno al recuperar el archivo"
-            })
-            
+        except urllib.error.HTTPError as exc:
+            self.send_text(
+                502, f"No se pudo recuperar el archivo ({exc.code})."
+            )
+        except (urllib.error.URLError, UnicodeDecodeError, OSError):
+            self.send_text(502, "No se pudo recuperar el archivo.")
+
+
+
+app = handler

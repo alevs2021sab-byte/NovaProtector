@@ -6,7 +6,6 @@ import secrets
 import urllib.parse
 import urllib.request
 import urllib.error
-import re
 
 MAX_BYTES = 200_000
 BASE_URL = "https://novaprotector.vercel.app"
@@ -16,7 +15,9 @@ BLOB_UPLOAD_URL = "https://blob.vercel-storage.com/"
 def send_json(handler, status, data):
     body = json.dumps(data, ensure_ascii=False).encode("utf-8")
     handler.send_response(status)
-    handler.send_header("Content-Type", "application/json; charset=utf-8")
+    handler.send_header(
+        "Content-Type", "application/json; charset=utf-8"
+    )
     handler.send_header("Cache-Control", "no-store")
     handler.send_header("X-Content-Type-Options", "nosniff")
     handler.send_header("Content-Length", str(len(body)))
@@ -28,14 +29,11 @@ def process_luau(source):
     if not source.strip():
         raise ValueError("Introduce código Luau.")
 
-    # Minificación conservadora: solo elimina espacios al final
-    # de cada línea. No pretende ser ofuscación avanzada.
-    result = "\n".join(line.rstrip() for line in source.splitlines()).strip() + "\n"
+    if "\x00" in source:
+        raise ValueError("El código contiene caracteres no válidos.")
 
-    if not result.strip():
-        raise ValueError("No hay código para procesar.")
-
-    return result
+    # No modifica el código ni afirma que esté ofuscado.
+    return source
 
 
 def upload_to_blob(file_id, code):
@@ -46,10 +44,15 @@ def upload_to_blob(file_id, code):
     ).strip()
 
     if not token:
-        raise RuntimeError("Falta configurar el token de Vercel Blob.")
+        raise RuntimeError(
+            "Falta BLOB_READ_WRITE_TOKEN en las variables de Vercel."
+        )
 
-    url = BLOB_UPLOAD_URL + urllib.parse.quote(file_id + ".lua", safe="")
-    req = urllib.request.Request(
+    url = BLOB_UPLOAD_URL + urllib.parse.quote(
+        file_id + ".lua", safe=""
+    )
+
+    request = urllib.request.Request(
         url,
         data=code.encode("utf-8"),
         method="PUT",
@@ -62,20 +65,28 @@ def upload_to_blob(file_id, code):
     )
 
     try:
-        with urllib.request.urlopen(req, timeout=25) as response:
+        with urllib.request.urlopen(request, timeout=25) as response:
             result = json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")[:300]
-        raise RuntimeError(f"Vercel Blob respondió HTTP {exc.code}: {detail}") from exc
+        detail = exc.read().decode(
+            "utf-8", errors="replace"
+        )[:250]
+        raise RuntimeError(
+            f"Error de Vercel Blob ({exc.code}): {detail}"
+        ) from exc
     except urllib.error.URLError as exc:
-        raise RuntimeError("No se pudo conectar con Vercel Blob.") from exc
+        raise RuntimeError(
+            "No se pudo conectar con Vercel Blob."
+        ) from exc
 
     blob_url = result.get("url", "")
     parsed = urllib.parse.urlparse(blob_url)
 
     if (
         parsed.scheme != "https"
-        or not (parsed.hostname or "").endswith(".public.blob.vercel-storage.com")
+        or not (parsed.hostname or "").endswith(
+            ".public.blob.vercel-storage.com"
+        )
         or parsed.username
         or parsed.password
     ):
@@ -89,16 +100,24 @@ class handler(BaseHTTPRequestHandler):
         pass
 
     def do_GET(self):
+        token_configured = bool(
+            (
+                os.environ.get("BLOB_READ_WRITE_TOKEN")
+                or os.environ.get("VERCEL_BLOB_READ_WRITE_TOKEN")
+                or ""
+            ).strip()
+        )
+
         send_json(self, 200, {
             "success": True,
             "service": "NovaProtector",
-            "blobConfigured": bool(
-                (os.environ.get("BLOB_READ_WRITE_TOKEN")
-                 or os.environ.get("VERCEL_BLOB_READ_WRITE_TOKEN")
-                 or "").strip()
-            ),
-            "mode": "basic-minification",
+            "blobConfigured": token_configured,
+            "mode": "storage-only",
             "obfuscationReady": False,
+            "message": (
+                "API activa. La transformación Luau todavía "
+                "no está implementada."
+            ),
         })
 
     def do_POST(self):
@@ -106,58 +125,82 @@ class handler(BaseHTTPRequestHandler):
             length = int(self.headers.get("Content-Length", "0"))
 
             if length <= 0:
-                send_json(self, 400, {"success": False, "error": "Solicitud vacía."})
+                send_json(self, 400, {
+                    "success": False,
+                    "error": "La solicitud está vacía.",
+                })
                 return
 
             if length > MAX_BYTES:
-                send_json(self, 413, {"success": False, "error": "El límite es de 200 KB."})
+                send_json(self, 413, {
+                    "success": False,
+                    "error": "El límite es de 200 KB.",
+                })
                 return
 
-            payload = json.loads(self.rfile.read(length).decode("utf-8"))
+            body = self.rfile.read(length)
+            payload = json.loads(body.decode("utf-8"))
 
             if not isinstance(payload, dict):
-                send_json(self, 400, {"success": False, "error": "JSON inválido."})
+                send_json(self, 400, {
+                    "success": False,
+                    "error": "El cuerpo debe ser un objeto JSON.",
+                })
                 return
 
             code = payload.get("code")
+
             if not isinstance(code, str) or not code.strip():
-                send_json(self, 400, {"success": False, "error": "Introduce código Luau."})
+                send_json(self, 400, {
+                    "success": False,
+                    "error": "Introduce código Luau.",
+                })
                 return
 
             if len(code.encode("utf-8")) > MAX_BYTES:
-                send_json(self, 413, {"success": False, "error": "El código supera los 200 KB."})
+                send_json(self, 413, {
+                    "success": False,
+                    "error": "El código supera los 200 KB.",
+                })
                 return
 
             processed = process_luau(code)
-            file_id = secrets.token_hex(8)
+            file_id = secrets.token_hex(16)
             blob_url = upload_to_blob(file_id, processed)
 
-            file_url = BASE_URL + "/api/raw?" + urllib.parse.urlencode({
-                "id": file_id,
-                "url": blob_url,
-            })
+            file_url = BASE_URL + "/api/raw?" + (
+                urllib.parse.urlencode({
+                    "id": file_id,
+                    "url": blob_url,
+                })
+            )
 
             send_json(self, 200, {
                 "success": True,
                 "fileId": file_id,
                 "blobUrl": blob_url,
                 "fileUrl": file_url,
-                "transformed": processed != code,
-                "mode": "basic-minification",
-                "message": "Código procesado y guardado. No es ofuscación avanzada.",
+                "transformed": False,
+                "mode": "storage-only",
+                "message": (
+                    "Código guardado correctamente. "
+                    "Todavía no está ofuscado."
+                ),
             })
 
         except (ValueError, UnicodeDecodeError):
             send_json(self, 400, {
                 "success": False,
-                "error": "JSON inválido o código de entrada incorrecto.",
+                "error": "JSON inválido o código incorrecto.",
             })
         except Exception:
             send_json(self, 500, {
                 "success": False,
-                "error": "No se pudo procesar el código. Comprueba la configuración del servidor.",
+                "error": (
+                    "No se pudo procesar la solicitud. "
+                    "Revisa los registros de Vercel."
+                ),
             })
 
 
 app = handler
-        

@@ -1,0 +1,9 @@
+
+{
+  "name": "novaprotector",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "javascript-obfuscator": "^5.0.0"
+  }
+}

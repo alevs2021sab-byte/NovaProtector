@@ -26,13 +26,13 @@ def send_json(handler, status, data):
 
 
 def process_luau(source):
-    if not source.strip():
+    if not source or not source.strip():
         raise ValueError("Introduce código Luau.")
 
     if "\x00" in source:
         raise ValueError("El código contiene caracteres no válidos.")
 
-    # No modifica el código ni afirma que esté ofuscado.
+    # No afirmar que el código está ofuscado sin un motor real.
     return source
 
 
@@ -100,7 +100,7 @@ class handler(BaseHTTPRequestHandler):
         pass
 
     def do_GET(self):
-        token_configured = bool(
+        configured = bool(
             (
                 os.environ.get("BLOB_READ_WRITE_TOKEN")
                 or os.environ.get("VERCEL_BLOB_READ_WRITE_TOKEN")
@@ -111,13 +111,9 @@ class handler(BaseHTTPRequestHandler):
         send_json(self, 200, {
             "success": True,
             "service": "NovaProtector",
-            "blobConfigured": token_configured,
-            "mode": "storage-only",
+            "blobConfigured": configured,
+            "mode": "safe-storage",
             "obfuscationReady": False,
-            "message": (
-                "API activa. La transformación Luau todavía "
-                "no está implementada."
-            ),
         })
 
     def do_POST(self):
@@ -181,10 +177,10 @@ class handler(BaseHTTPRequestHandler):
                 "blobUrl": blob_url,
                 "fileUrl": file_url,
                 "transformed": False,
-                "mode": "storage-only",
+                "mode": "safe-storage",
                 "message": (
-                    "Código guardado correctamente. "
-                    "Todavía no está ofuscado."
+                    "Archivo guardado. La ofuscación todavía "
+                    "no está implementada."
                 ),
             })
 

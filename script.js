@@ -10,11 +10,13 @@ const copyButton = document.getElementById("copyButton");
 const openButton = document.getElementById("openButton");
 const serviceLabel = document.getElementById("serviceLabel");
 const statusDot = document.getElementById("statusDot");
+const yearEl = document.getElementById("year");
 
-let lastRawUrl = "";
+if (yearEl) yearEl.textContent = new Date().getFullYear();
 
 function updateCount() {
-  charCount.textContent = `${codeInput.value.length.toLocaleString("es")} caracteres`;
+  const n = codeInput.value.length;
+  charCount.textContent = n.toLocaleString("es") + " chars";
 }
 
 function showNotice(msg, type = "") {
@@ -26,31 +28,28 @@ async function checkService() {
   try {
     const res = await fetch("/api/protect");
     const data = await res.json();
-    if (data.success && data.obfuscationReady) {
-      serviceLabel.textContent = "Ofuscación lista";
-      statusDot.className = "status-dot ok";
-    } else if (data.success) {
-      serviceLabel.textContent = "API conectada";
-      statusDot.className = "status-dot ok";
+    if (data.success) {
+      serviceLabel.textContent = data.obfuscationReady ? "Online · Obfuscation ready" : "Online";
+      statusDot.className = "pulse ok";
     } else {
-      throw new Error("API no lista");
+      throw new Error("offline");
     }
   } catch {
-    serviceLabel.textContent = "API no disponible";
-    statusDot.className = "status-dot bad";
+    serviceLabel.textContent = "Offline";
+    statusDot.className = "pulse bad";
   }
 }
 
 async function processCode() {
   const code = codeInput.value.trim();
   if (!code) {
-    showNotice("Pega un script primero.", "err");
+    showNotice("Pega un script para continuar.", "err");
     return;
   }
 
   processButton.disabled = true;
-  processLabel.textContent = "Ofuscando…";
-  showNotice("Procesando…");
+  processLabel.textContent = "Procesando…";
+  showNotice("Ofuscando y guardando…");
 
   try {
     const res = await fetch("/api/protect", {
@@ -59,19 +58,17 @@ async function processCode() {
       body: JSON.stringify({ code }),
     });
     const data = await res.json();
-
-    if (!data.success) throw new Error(data.error || "Error desconocido");
+    if (!data.success) throw new Error(data.error || "Error del servidor");
     if (!data.fileUrl && !data.blobUrl) {
-      throw new Error(data.blobError || "No se pudo guardar el script");
+      throw new Error(data.blobError || "No se pudo guardar en Blob");
     }
 
-    // Preferir dominio; si raw falla en el futuro, el usuario aún tiene blob
-    lastRawUrl = data.fileUrl || data.blobUrl;
-    const loadstring = `loadstring(game:HttpGet("${lastRawUrl}"))()`;
-
-    resultUrl.value = loadstring;
-    openButton.href = lastRawUrl;
+    const raw = data.fileUrl || data.blobUrl;
+    const ls = 'loadstring(game:HttpGet("' + raw + '"))()';
+    resultUrl.value = ls;
+    openButton.href = raw;
     resultPanel.classList.remove("hidden");
+    resultPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
     showNotice(data.message || "Listo. Copia el loadstring.", "ok");
   } catch (e) {
     resultPanel.classList.add("hidden");
@@ -85,7 +82,7 @@ async function processCode() {
 copyButton.addEventListener("click", async () => {
   try {
     await navigator.clipboard.writeText(resultUrl.value);
-    showNotice("Loadstring copiado.", "ok");
+    showNotice("Loadstring copiado al portapapeles.", "ok");
   } catch {
     resultUrl.select();
     document.execCommand("copy");
@@ -98,9 +95,15 @@ clearButton.addEventListener("click", () => {
   updateCount();
   resultPanel.classList.add("hidden");
   showNotice("");
+  codeInput.focus();
 });
 
 processButton.addEventListener("click", processCode);
 codeInput.addEventListener("input", updateCount);
+codeInput.addEventListener("keydown", (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === "Enter") processCode();
+});
+
 updateCount();
-checkService();
+che
+  ckService();

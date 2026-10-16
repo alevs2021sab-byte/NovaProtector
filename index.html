@@ -1,16 +1,14 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#09090b">
-  <meta name="description" content="NovaProtector: herramienta web para procesar y almacenar código LuaU.">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#09090b" />
   <title>NovaProtector — LuaU Studio</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/style.css" />
   <script src="/script.js" defer></script>
 </head>
 <body>
@@ -18,142 +16,64 @@
   <div class="ambient ambient-two"></div>
 
   <header class="topbar">
-    <a class="brand" href="/" aria-label="NovaProtector inicio">
+    <a class="brand" href="/">
       <span class="brand-mark">N<span>.</span></span>
       <span class="brand-copy">
         <strong>NovaProtector</strong>
         <small>LUAU STUDIO</small>
       </span>
     </a>
-
     <div class="topbar-right">
       <span class="service-status">
-        <span class="status-dot"></span>
-        <span id="serviceLabel">Servicio disponible</span>
+        <span class="status-dot" id="statusDot"></span>
+        <span id="serviceLabel">Comprobando…</span>
       </span>
-      <a class="top-link" href="#editor">Abrir estudio <span>↗</span></a>
     </div>
   </header>
 
   <main class="container">
     <section class="hero">
-      <div class="eyebrow"><span class="eyebrow-line"></span> DEVELOPER TOOLKIT <span class="eyebrow-version">V1.1</span></div>
-      <h1>Tu código.<br><span>Tu control.</span></h1>
+      <div class="eyebrow">DEVELOPER TOOLKIT · V2</div>
+      <h1>Tu código.<br /><span>Protegido.</span></h1>
       <p class="hero-description">
-        Procesa y almacena tus scripts LuaU en un espacio de trabajo
-        limpio, rápido y diseñado para desarrolladores.
+        Ofusca scripts LuaU y obtén un loadstring listo con tu dominio.
       </p>
-      <div class="hero-points">
-        <span><span class="check">✓</span> Flujo automatizado</span>
-        <span><span class="check">✓</span> Enlace RAW</span>
-        <span><span class="check">✓</span> Compatible con móvil</span>
-      </div>
     </section>
 
     <section class="workspace" id="editor">
-      <div class="workspace-heading">
-        <div>
-          <div class="section-kicker">WORKSPACE / 01</div>
-          <h2>Procesador LuaU</h2>
-          <p>Introduce tu código para comenzar el procesamiento.</p>
-        </div>
-        <span class="private-label"><span>◆</span> EDITOR</span>
-      </div>
-
-      <div class="editor-shell">
-        <div class="editor-toolbar">
-          <div class="editor-file">
-            <span class="file-icon">⌘</span>
-            <span>script.lua</span>
-            <span class="file-type">LUAU</span>
-          </div>
-          <span class="editor-live"><span></span> LISTO PARA EDITAR</span>
-        </div>
-
-        <div class="editor-body">
-          <div class="line-numbers" id="lineNumbers">1</div>
-          <textarea
-            id="codeInput"
-            spellcheck="false"
-            autocapitalize="off"
-            autocomplete="off"
-            autocorrect="off"
-            aria-label="Código LuaU"
-            placeholder="-- Pega tu código LuaU aquí&#10;&#10;local mensaje = &quot;Hola mundo&quot;&#10;print(mensaje)"
-          ></textarea>
-        </div>
-
-        <div class="editor-footer">
-          <span><span class="footer-indicator"></span> UTF-8</span>
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Editor</h2>
           <span id="charCount">0 caracteres</span>
         </div>
+        <textarea id="codeInput" placeholder="Pega aquí tu script Lua…" spellcheck="false"></textarea>
+        <div class="panel-actions">
+          <button type="button" id="clearButton" class="btn ghost">Limpiar</button>
+          <button type="button" id="processButton" class="btn primary">
+            <span id="processLabel">Ofuscar código</span>
+          </button>
+        </div>
+        <p id="notice" class="notice"></p>
       </div>
 
-      <div class="action-row">
-        <button id="clearButton" class="button button-secondary" type="button">
-          <span>⌫</span> Limpiar
-        </button>
-        <button id="processButton" class="button button-primary" type="button">
-          <span id="processIcon">✳</span>
-          <span id="processLabel">Procesar código</span>
-          <span class="button-arrow">↗</span>
-        </button>
+      <div class="panel result hidden" id="resultPanel">
+        <div class="panel-head">
+          <h2>Loadstring</h2>
+        </div>
+        <textarea id="resultUrl" readonly spellcheck="false"></textarea>
+        <div class="panel-actions">
+          <button type="button" id="copyButton" class="btn primary">Copiar</button>
+          <a id="openButton" class="btn ghost" href="#" target="_blank" rel="noopener">Abrir RAW</a>
+        </div>
+        <p class="hint">Pégalo en tu executor. En el navegador, el RAW muestra la pantalla de NovaProtector.</p>
       </div>
-
-      <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
-
-      <section id="resultPanel" class="result-panel" hidden>
-        <div class="result-heading">
-          <div class="result-icon">✓</div>
-          <div>
-            <h3>Procesamiento completado</h3>
-            <p id="resultDescription">Tu archivo está listo.</p>
-          </div>
-          <span class="result-badge">COMPLETADO</span>
-        </div>
-
-        <label class="result-label" for="resultUrl">ENLACE RAW</label>
-        <div class="result-url-row">
-          <input id="resultUrl" type="text" readonly aria-label="Enlace RAW generado">
-          <button id="copyButton" class="button button-secondary" type="button">Copiar</button>
-        </div>
-
-        <div class="result-actions">
-          <a id="openButton" class="button button-primary" href="#" target="_blank" rel="noopener noreferrer">Abrir resultado ↗</a>
-          <button id="downloadButton" class="button button-secondary" type="button">Descargar .lua ↓</button>
-        </div>
-      </section>
-    </section>
-
-    <section class="feature-grid" aria-label="Características">
-      <article class="feature-card">
-        <div class="feature-symbol">01</div>
-        <h3>Flujo sencillo</h3>
-        <p>Introduce el código, procésalo y obtén el enlace del resultado en un solo lugar.</p>
-      </article>
-      <article class="feature-card">
-        <div class="feature-symbol">02</div>
-        <h3>Almacenamiento remoto</h3>
-        <p>Los archivos procesados se guardan mediante la integración de Vercel Blob.</p>
-      </article>
-      <article class="feature-card">
-        <div class="feature-symbol">03</div>
-        <h3>Diseñado para devs</h3>
-        <p>Interfaz minimalista, editor accesible y controles pensados para tu flujo de trabajo.</p>
-      </article>
-    </section>
-
-    <section class="disclaimer">
-      <span class="disclaimer-icon">i</span>
-      <p>El procesamiento disponible depende de la versión del motor instalado. La compactación actual no sustituye a un ofuscador avanzado ni garantiza la validez de todos los scripts LuaU.</p>
     </section>
   </main>
 
   <footer class="footer">
-    <a class="footer-brand" href="/">NovaProtector<span>.</span></a>
-    <span>LuaU Studio · <span id="year"></span></span>
-    <span class="footer-note">Built for developers.</span>
+    <span>NovaProtector</span>
+    <a href="https://discord.gg/9kqrTp2NM" target="_blank" rel="noopener">Discord</a>
   </footer>
 </body>
-        </html>
-        
+</
+  html>

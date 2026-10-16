@@ -3,77 +3,150 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#09090b" />
-  <title>NovaProtector — LuaU Studio</title>
+  <meta name="theme-color" content="#07070a" />
+  <meta name="description" content="NovaProtector — estudio profesional de ofuscación LuaU. Loadstring listo con tu dominio." />
+  <title>NovaProtector — Professional LuaU Protection</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/style.css" />
   <script src="/script.js" defer></script>
 </head>
 <body>
-  <div class="ambient ambient-one"></div>
-  <div class="ambient ambient-two"></div>
+  <div class="bg-grid"></div>
+  <div class="glow glow-a"></div>
+  <div class="glow glow-b"></div>
+  <div class="glow glow-c"></div>
 
-  <header class="topbar">
-    <a class="brand" href="/">
-      <span class="brand-mark">N<span>.</span></span>
-      <span class="brand-copy">
+  <header class="nav">
+    <a class="logo" href="/">
+      <span class="logo-mark">
+        <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
+          <rect width="32" height="32" rx="9" fill="url(#g)"/>
+          <path d="M9 22V10h3.2l4.1 7.2L20.4 10H23.6v12h-2.8v-7.1L17.1 22h-2.2l-3.6-7.1V22H9z" fill="#fff"/>
+          <defs><linearGradient id="g" x1="0" y1="0" x2="32" y2="32"><stop stop-color="#8B5CF6"/><stop offset="1" stop-color="#06B6D4"/></linearGradient></defs>
+        </svg>
+      </span>
+      <span class="logo-text">
         <strong>NovaProtector</strong>
-        <small>LUAU STUDIO</small>
+        <small>LUAU PROTECTION STUDIO</small>
       </span>
     </a>
-    <div class="topbar-right">
-      <span class="service-status">
-        <span class="status-dot" id="statusDot"></span>
-        <span id="serviceLabel">Comprobando…</span>
-      </span>
+
+    <nav class="nav-links">
+      <a href="#studio">Studio</a>
+      <a href="#features">Features</a>
+      <a href="https://discord.gg/9kqrTp2NM" target="_blank" rel="noopener">Discord</a>
+    </nav>
+
+    <div class="nav-status">
+      <span class="pulse" id="statusDot"></span>
+      <span id="serviceLabel">Connecting…</span>
     </div>
   </header>
 
-  <main class="container">
+  <main>
     <section class="hero">
-      <div class="eyebrow">DEVELOPER TOOLKIT · V2</div>
-      <h1>Tu código.<br /><span>Protegido.</span></h1>
-      <p class="hero-description">
-        Ofusca scripts LuaU y obtén un loadstring listo con tu dominio.
+      <div class="hero-badge reveal">
+        <span class="badge-dot"></span>
+        Professional toolkit · v2.0
+      </div>
+      <h1 class="reveal delay-1">
+        Protect your scripts.<br />
+        <span class="gradient-text">Ship with confidence.</span>
+      </h1>
+      <p class="hero-lead reveal delay-2">
+        Ofuscación LuaU de nivel estudio. Genera un <code>loadstring</code> con tu dominio,
+        listo para executor, con página RAW corporativa.
       </p>
+      <div class="hero-cta reveal delay-3">
+        <a href="#studio" class="btn btn-primary">
+          <span>Abrir Studio</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <a href="https://discord.gg/9kqrTp2NM" class="btn btn-ghost" target="_blank" rel="noopener">Unirse al Discord</a>
+      </div>
+      <div class="hero-stats reveal delay-4">
+        <div><strong>XOR + Lua</strong><span>Motor nativo</span></div>
+        <div><strong>RAW domain</strong><span>Tu marca</span></div>
+        <div><strong>1-click</strong><span>Loadstring</span></div>
+      </div>
     </section>
 
-    <section class="workspace" id="editor">
-      <div class="panel">
-        <div class="panel-head">
-          <h2>Editor</h2>
-          <span id="charCount">0 caracteres</span>
-        </div>
-        <textarea id="codeInput" placeholder="Pega aquí tu script Lua…" spellcheck="false"></textarea>
-        <div class="panel-actions">
-          <button type="button" id="clearButton" class="btn ghost">Limpiar</button>
-          <button type="button" id="processButton" class="btn primary">
-            <span id="processLabel">Ofuscar código</span>
-          </button>
-        </div>
-        <p id="notice" class="notice"></p>
+    <section class="features" id="features">
+      <div class="feature-card reveal">
+        <div class="feature-icon">⬡</div>
+        <h3>Ofuscación real</h3>
+        <p>Rename seguro, junk y cifrado sin romper servicios de Roblox.</p>
       </div>
+      <div class="feature-card reveal delay-1">
+        <div class="feature-icon">◈</div>
+        <h3>Loadstring listo</h3>
+        <p>Salida directa: <code>loadstring(game:HttpGet(...))()</code> con tu dominio.</p>
+      </div>
+      <div class="feature-card reveal delay-2">
+        <div class="feature-icon">▣</div>
+        <h3>RAW premium</h3>
+        <p>Navegador: landing negra NovaProtector. Executor: código ejecutable.</p>
+      </div>
+    </section>
 
-      <div class="panel result hidden" id="resultPanel">
-        <div class="panel-head">
-          <h2>Loadstring</h2>
+    <section class="studio" id="studio">
+      <div class="studio-shell reveal">
+        <div class="studio-top">
+          <div class="window-dots"><span></span><span></span><span></span></div>
+          <div class="studio-title">NovaProtector Studio</div>
+          <div class="studio-meta" id="charCount">0 chars</div>
         </div>
-        <textarea id="resultUrl" readonly spellcheck="false"></textarea>
-        <div class="panel-actions">
-          <button type="button" id="copyButton" class="btn primary">Copiar</button>
-          <a id="openButton" class="btn ghost" href="#" target="_blank" rel="noopener">Abrir RAW</a>
+
+        <div class="studio-body">
+          <label class="field-label" for="codeInput">Source · script.lua</label>
+          <textarea id="codeInput" placeholder="-- Pega tu script LuaU aquí&#10;print('Hello NovaProtector')" spellcheck="false"></textarea>
+
+          <div class="studio-actions">
+            <button type="button" class="btn btn-ghost" id="clearButton">Limpiar</button>
+            <button type="button" class="btn btn-primary" id="processButton">
+              <span class="btn-shine"></span>
+              <span id="processLabel">Ofuscar código</span>
+            </button>
+          </div>
+          <p class="notice" id="notice"></p>
         </div>
-        <p class="hint">Pégalo en tu executor. En el navegador, el RAW muestra la pantalla de NovaProtector.</p>
+
+        <div class="result-block hidden" id="resultPanel">
+          <div class="result-head">
+            <h3>Output · loadstring</h3>
+            <span class="tag">READY</span>
+          </div>
+          <textarea id="resultUrl" readonly spellcheck="false"></textarea>
+          <div class="studio-actions">
+            <button type="button" class="btn btn-primary" id="copyButton">Copiar loadstring</button>
+            <a class="btn btn-ghost" id="openButton" href="#" target="_blank" rel="noopener">Abrir RAW</a>
+          </div>
+        </div>
       </div>
     </section>
   </main>
 
-  <footer class="footer">
-    <span>NovaProtector</span>
-    <a href="https://discord.gg/9kqrTp2NM" target="_blank" rel="noopener">Discord</a>
+  <footer class="site-footer">
+    <div class="footer-brand">
+      <strong>NovaProtector</strong>
+      <span>Professional LuaU protection</span>
+    </div>
+    <div class="footer-links">
+      <a href="https://www.tiktok.com/@novadynamics" target="_blank" rel="noopener" class="social">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .56.04.82.12v-3.4a6.22 6.22 0 00-.82-.05A6.34 6.34 0 003.15 15.8a6.34 6.34 0 0010.86 4.49V13.2a8.27 8.27 0 005.58 2.15V12c-1.3-.01-2.55-.5-3.5-1.35a4.84 4.84 0 01-.5-3.96z"/></svg>
+        TikTok
+      </a>
+      <a href="https://discord.gg/9kqrTp2NM" target="_blank" rel="noopener" class="social">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.32 4.37A19.8 19.8 0 0015.89 3l-.2.36c1.99.54 2.92 1.31 2.92 1.31A13.6 13.6 0 0012 4.2a13.6 13.6 0 00-6.61.47s.97-.82 3.08-1.36L8.2 3A19.8 19.8 0 003.68 4.37C.96 9.12.2 13.73.2 13.73a16.3 16.3 0 005.03 2.56l1.03-1.4a8.3 8.3 0 01-1.5-.74l.36-.28c2.85 1.33 5.95 1.33 8.76 0l.36.28c-.48.3-.99.55-1.5.74l1.03 1.4a16.3 16.3 0 005.03-2.56s-.76-4.61-3.48-9.36zM8.7 12.9c-.78 0-1.42-.72-1.42-1.6 0-.89.62-1.61 1.42-1.61.79 0 1.43.72 1.42 1.61 0 .88-.63 1.6-1.42 1.6zm6.6 0c-.79 0-1.42-.72-1.42-1.6 0-.89.62-1.61 1.42-1.61.79 0 1.42.72 1.42 1.61 0 .88-.63 1.6-1.42 1.6z"/></svg>
+        Discord
+      </a>
+    </div>
+    <div class="footer-copy">
+      © <span id="year"></span> NovaProtector · All rights reserved
+    </div>
   </footer>
 </body>
-</
-  html>
+    </html>
+  

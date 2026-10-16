@@ -1,5 +1,17 @@
-
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json"
-
+  "version": 2,
+  "builds": [
+    { "src": "api/protect.py", "use": "@vercel/python" },
+    { "src": "api/raw.py", "use": "@vercel/python" },
+    { "src": "index.html", "use": "@vercel/static" },
+    { "src": "style.css", "use": "@vercel/static" },
+    { "src": "script.js", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/api/protect", "dest": "/api/protect.py" },
+    { "src": "/api/raw", "dest": "/api/raw.py" },
+    { "src": "/style.css", "dest": "/style.css" },
+    { "src": "/script.js", "dest": "/script.js" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
 }

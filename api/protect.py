@@ -13,24 +13,164 @@ from datetime import datetime, timezone
 
 DOMAIN = "https://novaprotector.vercel.app"
 
+# ============================================================
+# LISTA COMPLETA DE PALABRAS RESERVADAS
+# ============================================================
 RESERVED = {
-    "self", "script", "game", "workspace", "print", "warn", "error",
-    "typeof", "type", "pairs", "ipairs", "next", "select", "unpack",
-    "table", "string", "math", "task", "wait", "spawn", "delay", "shared",
-    "bit32", "utf8", "coroutine", "debug", "os", "tick", "time",
-    "loadstring", "load", "pcall", "xpcall", "tostring", "tonumber",
-    "Instance", "Enum", "Color3", "UDim2", "Vector3", "CFrame", "UDim",
-    "Players", "PlayerGui", "LocalPlayer", "ReplicatedStorage", "ServerStorage",
-    "ServerScriptService", "StarterGui", "StarterPack", "StarterPlayer",
-    "Lighting", "Terrain", "RunService", "UserInputService", "TweenService",
-    "HttpService", "TeleportService", "MarketplaceService", "DataStoreService",
-    "CollectionService", "PhysicsService", "PathfindingService", "SoundService",
-    "TextService", "ContextActionService", "GuiService", "GroupService",
-    "Teams", "Chat", "VoiceChatService", "ProximityPromptService",
-    "Debris", "InsertService", "ContentProvider", "Stats", "TestService",
-    "VirtualUser", "CoreGui", "CorePackages", "RobloxReplicatedStorage",
-    "GetService", "FindFirstChild", "WaitForChild", "IsA", "Clone", "Destroy",
-    "Connect", "Once", "Fire", "Invoke", "Parent", "Name", "Value",
+    -- Palabras reservadas de Lua
+    "and", "break", "do", "else", "elseif", "end", "false", "for",
+    "function", "if", "in", "local", "nil", "not", "or", "repeat",
+    "return", "then", "true", "until", "while",
+    
+    -- Funciones básicas estándar
+    "assert", "error", "getfenv", "getmetatable", "ipairs", "load",
+    "loadfile", "loadstring", "next", "pairs", "pcall", "print",
+    "rawequal", "rawget", "rawset", "select", "setfenv", "setmetatable",
+    "tonumber", "tostring", "type", "unpack", "xpcall", "warn",
+    
+    -- Librerías estándar
+    "coroutine", "debug", "math", "os", "string", "table", "utf8",
+    "bit32", "io", "file",
+    
+    -- math
+    "abs", "acos", "asin", "atan", "atan2", "ceil", "cos", "cosh",
+    "deg", "exp", "floor", "fmod", "frexp", "huge", "ldexp", "log",
+    "log10", "max", "min", "modf", "pi", "pow", "rad", "random",
+    "randomseed", "sin", "sinh", "sqrt", "tan", "tanh",
+    
+    -- string
+    "byte", "char", "dump", "find", "format", "gmatch", "gsub",
+    "len", "lower", "match", "rep", "reverse", "sub", "upper",
+    "split", "join",
+    
+    -- table
+    "concat", "insert", "maxn", "remove", "sort", "clear", "find",
+    
+    -- coroutine
+    "create", "resume", "running", "status", "wrap", "yield",
+    
+    -- bit32
+    "arshift", "band", "bnot", "bor", "bxor", "btest", "extract",
+    "lrotate", "lshift", "replace", "rrotate", "rshift",
+    
+    -- Roblox — Servicios principales
+    "game", "workspace", "script", "shared", "_G", "_ENV",
+    "Players", "LocalPlayer", "PlayerGui", "StarterGui", "StarterPack",
+    "StarterPlayer", "StarterPlayerScripts", "StarterCharacterScripts",
+    "ReplicatedStorage", "ServerStorage", "ServerScriptService",
+    "Lighting", "Terrain", "SoundService", "Workspace", "GuiService",
+    "RunService", "UserInputService", "TweenService", "HttpService",
+    "TeleportService", "MarketplaceService", "DataStoreService",
+    "CollectionService", "PhysicsService", "PathfindingService",
+    "TextService", "ContextActionService", "GroupService", "Teams",
+    "Chat", "VoiceChatService", "ProximityPromptService", "Debris",
+    "InsertService", "ContentProvider", "Stats", "TestService",
+    "CoreGui", "CorePackages", "RobloxReplicatedStorage", "VirtualUser",
+    "UIGradientService", "TaskScheduler", "MouseService",
+    "AttributeService", "Instance", "Enum", "Color3", "UDim2",
+    "Vector2", "Vector3", "CFrame", "UDim", "Ray", "RaycastParams",
+    "Region3", "Region3int16", "NumberRange", "NumberSequence",
+    "ColorSequence", "BrickColor", "Faces", "Axes",
+    "Rect", "PhysicalProperties", "PathWaypoint", "OverlapParams",
+    "RaycastResult", "HumanoidDescription",
+    
+    -- Métodos principales de Roblox
+    "GetService", "FindFirstChild", "WaitForChild", "IsA", "Clone",
+    "Destroy", "ClearAllChildren", "GetChildren", "GetDescendants",
+    "FindFirstAncestor", "WaitForAncestor", "GetAttribute", "SetAttribute",
+    "GetAttributes", "GetAttributeChangedSignal", "SetAttributes",
+    "GetPropertyChangedSignal", "IsDescendantOf", "FindFirstChildWhichIsA",
+    "FindFirstAncestorWhichIsA", "Connect", "Once", "Disconnect",
+    "Fire", "FireServer", "Invoke", "InvokeServer", "OnServerEvent",
+    "OnClientEvent", "OnServerInvoke", "OnClientInvoke", "Parent",
+    "Name", "Value", "ClassName", "FullName", "Children",
+    
+    -- Propiedades comunes
+    "Enabled", "Visible", "Position", "Size", "AnchorPoint", "Transparency",
+    "BackgroundColor3", "BackgroundTransparency", "BorderSizePixel",
+    "Text", "TextColor3", "TextSize", "TextWrapped", "TextXAlignment",
+    "TextYAlignment", "Font", "ZIndexBehavior", "ClipsDescendants",
+    "AutoLocalize", "Locale", "LayoutOrder", "NextSelectionDown",
+    "NextSelectionLeft", "NextSelectionRight", "NextSelectionUp",
+    
+    -- task / corutinas
+    "task", "wait", "spawn", "delay", "defer", "cancel", "status",
+    "synchronize", "desynchronize", "library",
+    
+    -- Funciones de carga
+    "loadstring", "load", "loadfile", "dofile", "dostring",
+    
+    -- Manejo de errores
+    "pcall", "xpcall", "error", "assert", "warn",
+    
+    -- Otros comunes
+    "self", "true", "false", "nil", "typeof", "type", "select",
+    "pairs", "ipairs", "next", "rawget", "rawset", "rawequal",
+    "getmetatable", "setmetatable", "tostring", "tonumber",
+    "unpack", "newproxy",
+    
+    -- Http / Web
+    "HttpGet", "HttpPost", "JsonEncode", "JsonDecode", "Base64Encode",
+    "Base64Decode", "UrlEncode", "UrlDecode",
+    
+    -- Valores de tiempo
+    "tick", "time", "os", "date", "clock", "elapsedTime",
+    
+    -- Humanoid / Personaje
+    "Humanoid", "HumanoidRootPart", "Torso", "Head", "LeftArm",
+    "RightArm", "LeftLeg", "RightLeg", "Health", "MaxHealth",
+    "WalkSpeed", "JumpPower", "JumpHeight", "DisplayDistanceType",
+    "PlatformStand", "RootPart", "PrimaryPart",
+    
+    -- Eventos comunes
+    "Changed", "ChildAdded", "ChildRemoved", "DescendantAdded",
+    "DescendantRemoved", "Destroying", "InputBegan", "InputEnded",
+    "MouseButton1Click", "MouseButton1Down", "MouseButton1Up",
+    "MouseButton2Click", "MouseButton2Down", "MouseButton2Up",
+    "MouseMoved", "MouseEnter", "MouseLeave", "FocusLost",
+    
+    -- UI / Gui
+    "Frame", "TextLabel", "TextButton", "ImageLabel", "ImageButton",
+    "TextBox", "ScrollingFrame", "UIPadding", "UIGradient",
+    "UIListLayout", "UIGridLayout", "UIPageLayout", "UICorner",
+    "UIStroke", "AspectRatioType", "SizeConstraint",
+    
+    -- Conexiones
+    "Connection", "RBXScriptConnection", "RBXScriptSignal",
+    
+    -- Otros tipos de datos
+    "ColorSequenceKeypoint", "NumberSequenceKeypoint", "Path",
+    "Instance", "RaycastParams", "OverlapParams", "CollisionGroupInfo",
+    "RaycastResult", "OverlapResult", "PathWaypoint", "PhysicalProperties",
+    
+    -- Servicios adicionales
+    "BadgeService", "BindableEvent", "BindableFunction", "RemoteEvent",
+    "RemoteFunction", "LocalScript", "Script", "ModuleScript",
+    "Part", "BasePart", "WedgePart", "CornerWedgePart", "Seat",
+    "VehicleSeat", "SpawnLocation", "MessageScript", "Decal", "Texture",
+    "Sound", "Animation", "AnimationController", "Animator", "Keyframe",
+    "KeyframeSequence", "ParticleEmitter", "Trail", "Light", "PointLight",
+    "SpotLight", "SurfaceLight", "Fire", "Smoke", "Sparkles", "Explosion",
+    "ForceField", "Hint", "Message", "ValueBase", "BoolValue", "IntValue",
+    "NumberValue", "StringValue", "ObjectValue", "NumberRangeValue",
+    "Color3Value", "InstanceValue", "Vector3Value", "Vector2Value",
+    "CFrameValue", "RayValue", "Region3Value", "TweenInfo", "EasingStyle",
+    "EasingDirection", "PlaybackState", "DataType", "EnumItem", "Enums",
+    "FogColor", "FogEnd", "FogStart", "Ambient", "OutdoorAmbient",
+    "Brightness", "ClockTime", "GeographicLatitude", "ExplicitAutoLocalize",
+    "RobloxLocaleId", "SystemLocaleId", "LocalizationTable", "Source",
+    "Translation", "Translator", "GetTranslatorForPlayer", "FormatByKey",
+    "GetTextForPlayer", "LocalizationService", "KeyboardService",
+    "GamepadService", "VRService", "GuiBaseService", "KeyboardInputService",
+    "ClipboardService", "Keyboard", "Mouse", "Touch", "Gamepad",
+    "InputObject", "InputType", "UserInputType", "KeyCode", "Axis",
+    "Button", "GamepadButton", "GamepadAxis", "TextInput", "TextInputType",
+    "TextDirection", "TextXAlignment", "TextYAlignment", "Font",
+    "Enum", "EasingStyle", "EasingDirection", "PlaybackState",
+    "TweenBase", "Tween", "TweenInfo", "RepeatCount", "Reverses",
+    "DelayTime", "EasingStyle", "EasingDirection", "Time", "Style",
+    "Direction", "Completed", "Cancelled", "Paused", "Resumed",
+    "Play", "Pause", "Cancel", "Restart", "Destroy", "Wait",
 }
 
 # ============================================================
@@ -480,4 +620,3 @@ class handler(BaseHTTPRequestHandler):
 
 
 app = handler
-    

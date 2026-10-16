@@ -1,244 +1,140 @@
 from http.server import BaseHTTPRequestHandler
-import json
-import re
 import os
-import random
-import string
-import base64
-import hashlib
+import re
 import urllib.parse
 import urllib.request
-import urllib.error
-from datetime import datetime, timezone
 
-DOMAIN = "https://novaprotector.vercel.app"
+KNOWN_HOSTS = ["sqe5t8mtibvai8ge"]
 
 
-def random_name(n=8):
-    return "".join(random.choices(string.ascii_letters, k=n))
+def candidate_hosts():
+    hosts = []
+    s = (os.environ.get("BLOB_STORE_ID") or "").strip()
+    if s.startswith("store_"):
+        s = s[len("store_"):]
+    if s:
+        hosts.append(s.lower())
+    for h in KNOWN_HOSTS:
+        if h not in hosts:
+            hosts.append(h)
+    return hosts
 
 
-def strip_comments(code: str) -> str:
-    code = re.sub(r"--\[\[[\s\S]*?\]\]", "", code)
-    code = re.sub(r"--[^\r\n]*", "", code)
-    lines = [ln.rstrip() for ln in code.splitlines()]
-    return re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
+def is_browser(headers) -> bool:
+    ua = (headers.get("User-Agent") or "").lower()
+    if "roblox" in ua:
+        return False
+    dest = (headers.get("Sec-Fetch-Dest") or "").lower()
+    mode = (headers.get("Sec-Fetch-Mode") or "").lower()
+    if dest == "document" or mode == "navigate":
+        return True
+    accept = (headers.get("Accept") or "").lower()
+    if accept.startswith("text/html") and "mozilla" in ua:
+        return True
+    return False
 
 
-def rename_locals(code: str) -> str:
-    """Renombra locals sin tocar strings ni servicios de Roblox."""
-    found = re.findall(r"\blocal\s+([a-zA-Z_][a-zA-Z0-9_]*)", code)
-    reserved = {
-        "self", "script", "game", "workspace", "print", "warn", "error",
-        "typeof", "type", "pairs", "ipairs", "next", "select", "unpack",
-        "table", "string", "math", "task", "wait", "spawn", "delay", "shared",
-        "bit32", "utf8", "coroutine", "debug", "os", "tick", "time",
-        "loadstring", "load", "pcall", "xpcall", "tostring", "tonumber",
-        "Instance", "Enum", "Color3", "UDim2", "Vector3", "CFrame", "UDim",
-        "Players", "PlayerGui", "LocalPlayer", "ReplicatedStorage", "ServerStorage",
-        "ServerScriptService", "StarterGui", "StarterPack", "StarterPlayer",
-        "Lighting", "Terrain", "RunService", "UserInputService", "TweenService",
-        "HttpService", "TeleportService", "MarketplaceService", "DataStoreService",
-        "CollectionService", "PhysicsService", "PathfindingService", "SoundService",
-        "TextService", "ContextActionService", "GuiService", "GroupService",
-        "Teams", "Chat", "VoiceChatService", "ProximityPromptService",
-        "Debris", "InsertService", "ContentProvider", "Stats", "TestService",
-        "VirtualUser", "CoreGui", "CorePackages", "RobloxReplicatedStorage",
-    }
-    # Proteger strings para no renombrar dentro de comillas
-    strings = []
-    def _save(m):
-        strings.append(m.group(0))
-        return f"__NPSTR{len(strings)-1}__"
-    protected = re.sub(r"([\"\'])(?:\\.|(?!\1).)*\1", _save, code)
-
-    mapping = {}
-    for name in set(found):
-        if name not in reserved and not name.startswith("__NPSTR"):
-            mapping[name] = "_" + random_name(7)
-    for old_name, new_name in mapping.items():
-        protected = re.sub(rf"\b{re.escape(old_name)}\b", new_name, protected)
-
-    def _restore(m):
-        idx = int(m.group(1))
-        return strings[idx]
-    return re.sub(r"__NPSTR(\d+)__", _restore, protected)
+def fetch_bytes(url: str) -> bytes:
+    req = urllib.request.Request(url, headers={"User-Agent": "NovaProtector/1.0"})
+    with urllib.request.urlopen(req, timeout=20) as resp:
+        return resp.read()
 
 
-def add_junk(code: str) -> str:
-    junk = [
-        f"local {random_name()}={random.randint(1,999)};",
-        f"if false then local {random_name()}=nil end;",
-    ]
-    out = []
-    for line in code.splitlines():
-        out.append(line)
-        if line.strip() and random.random() > 0.82:
-            out.append(random.choice(junk))
-    return "\n".join(out)
-
-
-def xor_bytes(data: bytes, key: bytes) -> bytes:
-    return bytes(b ^ key[i % len(key)] for i, b in enumerate(data))
-
-
-def obfuscate(code: str) -> str:
-    """
-    Ofuscacion compatible con Roblox/Delta:
-    - sin HttpService:Base64Decode
-    - Base64 + XOR en Lua puro
-    - loadstring al final
-    """
-    src = strip_comments(code)
-    src = rename_locals(src)
-    src = add_junk(src)
-
-    key = bytes(random.randint(1, 255) for _ in range(12))
-    enc = xor_bytes(src.encode("utf-8"), key)
-    b64 = base64.b64encode(enc).decode("ascii")
-    kb64 = base64.b64encode(key).decode("ascii")
-
-    chunks = [b64[i : i + 90] for i in range(0, len(b64), 90)]
-    lines = []
-    lines.append("-- NovaProtector | protected")
-    lines.append("-- " + datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"))
-
-    names = []
-    for c in chunks:
-        nm = "_" + random_name(9)
-        names.append(nm)
-        lines.append("local " + nm + '="' + c + '"')
-    cat = "_" + random_name(8)
-    lines.append("local " + cat + "=" + "..".join(names))
-    kn = "_" + random_name(7)
-    lines.append("local " + kn + '="' + kb64 + '"')
-
-    # Decodificador puro (sin HttpService)
-    lines.append("local function _D(data)")
-    lines.append("local b='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'")
-    lines.append("data=string.gsub(data,'[^'..b..'=]','')")
-    lines.append("return (data:gsub('.',function(x)")
-    lines.append("if x=='=' then return '' end")
-    lines.append("local r,f='',(b:find(x)-1)")
-    lines.append("for i=6,1,-1 do r=r..(f%2^i-f%2^(i-1)>0 and '1' or '0') end")
-    lines.append("return r")
-    lines.append("end):gsub('%d%d%d?%d?%d?%d?%d?%d?',function(x)")
-    lines.append("if #x~=8 then return '' end")
-    lines.append("local c=0")
-    lines.append("for i=1,8 do c=c+(x:sub(i,i)=='1' and 2^(8-i) or 0) end")
-    lines.append("return string.char(c)")
-    lines.append("end))")
-    lines.append("end")
-
-    lines.append("local function _X(s,k)")
-    lines.append("local o={}")
-    lines.append("for i=1,#s do")
-    lines.append("local a=string.byte(s,i)")
-    lines.append("local bb=string.byte(k,((i-1)%#k)+1)")
-    lines.append("o[i]=string.char(bit32.bxor(a,bb))")
-    lines.append("end")
-    lines.append("return table.concat(o)")
-    lines.append("end")
-
-    lines.append("local _src=_X(_D(" + cat + "),_D(" + kn + "))")
-    lines.append("local _fn,_err=loadstring(_src)")
-    lines.append('if not _fn then error("NovaProtector: "..tostring(_err)) end')
-    lines.append("_fn()")
-    return "\n".join(lines)
-
-
-def upload_to_blob(pathname: str, content: str) -> str:
-    token = (os.environ.get("BLOB_READ_WRITE_TOKEN") or "").strip()
-    if not token:
-        raise RuntimeError("Falta BLOB_READ_WRITE_TOKEN")
-
-    safe = re.sub(r"[^a-zA-Z0-9._-]", "", pathname)
-    if not safe.endswith(".lua"):
-        safe += ".lua"
-
-    body = content.encode("utf-8")
-    url = "https://blob.vercel-storage.com/" + urllib.parse.quote(safe)
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "x-api-version": "7",
-        "x-content-type": "text/plain; charset=utf-8",
-        "x-add-random-suffix": "0",
-    }
-    req = urllib.request.Request(url, data=body, method="PUT", headers=headers)
-    try:
-        with urllib.request.urlopen(req, timeout=25) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-    except urllib.error.HTTPError as e:
-        err = e.read().decode("utf-8", errors="ignore")
-        raise RuntimeError(f"HTTP {e.code}: {err}") from e
-    return data.get("url") or data.get("downloadUrl")
+HTML = """<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>NovaProtector</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;background:#000;color:#fff;font-family:system-ui,sans-serif}
+.wrap{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;gap:14px}
+.shield{font-size:64px}
+h1{font-size:1.45rem}
+p{color:#aaa;max-width:420px;line-height:1.5}
+a{color:#5865F2;text-decoration:none;font-weight:600;border:1px solid #5865F2;padding:10px 18px;border-radius:8px}
+a:hover{background:#5865F2;color:#fff}
+.links{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.id{color:#555;font-size:.75rem;margin-top:16px;word-break:break-all}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="shield">&#128737;&#65039;</div>
+  <h1>Este codigo ha sido protegido por NovaProtector</h1>
+  <p>Ofuscado en <strong style="color:#fff">https://novaprotector.vercel.app/</strong></p>
+  <div class="links">
+    <a href="https://novaprotector.vercel.app/" target="_blank" rel="noopener">NovaProtector</a>
+    <a href="https://discord.gg/9kqrTp2NM" target="_blank" rel="noopener">Discord</a>
+  </div>
+  <div class="id">id: {file_id}</div>
+</div>
+</body>
+</html>
+"""
 
 
 class handler(BaseHTTPRequestHandler):
-    def log_message(self, *args):
-        pass
+    def log_message(self, *a):
+        return
 
-    def send_json(self, status, obj):
-        body = json.dumps(obj, ensure_ascii=False).encode("utf-8")
+    def _send(self, status, body, ctype="text/plain; charset=utf-8"):
+        if not isinstance(body, (bytes, bytearray)):
+            body = str(body).encode("utf-8")
         self.send_response(status)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Type", ctype)
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
-        self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS, GET")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Disposition", "inline")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
 
     def do_OPTIONS(self):
-        self.send_json(200, {"ok": True})
+        self._send(200, b"ok")
 
     def do_GET(self):
-        self.send_json(200, {
-            "success": True,
-            "service": "NovaProtector",
-            "blobConfigured": bool(os.environ.get("BLOB_READ_WRITE_TOKEN")),
-            "mode": "obfuscate",
-            "obfuscationReady": True,
-        })
-
-    def do_POST(self):
         try:
-            n = int(self.headers.get("Content-Length", 0))
-            raw = self.rfile.read(n) if n else b"{}"
-            data = json.loads(raw.decode("utf-8"))
-            code = data.get("code", "")
-            if not isinstance(code, str) or not code.strip():
-                self.send_json(400, {"success": False, "error": "Codigo vacio"})
+            qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            file_id = (qs.get("id") or [None])[0]
+            blob_url = (qs.get("url") or [None])[0]
+
+            if not file_id or not re.fullmatch(r"[a-zA-Z0-9_-]{8,64}", file_id):
+                self._send(400, b"Identificador no valido.")
                 return
 
-            protected = obfuscate(code)
-            file_id = hashlib.md5((protected + str(random.random())).encode()).hexdigest()[:16]
+            if is_browser(self.headers):
+                self._send(200, HTML.replace("{file_id}", file_id).encode("utf-8"), "text/html; charset=utf-8")
+                return
 
-            blob_url = None
-            blob_error = None
-            file_url = None
-            try:
-                blob_url = upload_to_blob(f"{file_id}.lua", protected)
-                # loadstring corto con tu dominio (+ url del blob por si raw lo usa)
-                q = urllib.parse.urlencode({"id": file_id, "url": blob_url})
-                file_url = f"{DOMAIN}/api/raw?{q}"
-            except Exception as e:
-                blob_error = str(e)
+            candidates = []
+            if blob_url:
+                decoded = urllib.parse.unquote(blob_url)
+                if decoded.startswith("https://") and "blob.vercel-storage.com" in decoded:
+                    candidates.append(decoded)
 
-            self.send_json(200, {
-                "success": True,
-                "fileId": file_id,
-                "blobUrl": blob_url,
-                "fileUrl": file_url,
-                "transformed": True,
-                "mode": "obfuscate",
-                "message": "Codigo ofuscado y guardado.",
-                "blobError": blob_error,
-                "protectedCode": protected,
-            })
+            for host in candidate_hosts():
+                candidates.append("https://%s.public.blob.vercel-storage.com/%s.lua" % (host, file_id))
+                candidates.append("https://%s.public.blob.vercel-storage.com/%s" % (host, file_id))
+
+            last = None
+            for url in candidates:
+                try:
+                    data = fetch_bytes(url)
+                    # Evitar devolver JSON de error accidental
+                    if data.lstrip().startswith(b"{") and b"obfuscationReady" in data[:200]:
+                        last = "respuesta API invalida"
+                        continue
+                    self._send(200, data, "text/plain; charset=utf-8")
+                    return
+                except Exception as e:
+                    last = e
+                    continue
+
+            self._send(404, ("Script no encontrado: " + str(last)).encode("utf-8"))
         except Exception as e:
-            self.send_json(500, {"success": False, "error": str(e)})
+            self._send(500, str(e).encode("utf-8"))
 
 
 app = handler
-            

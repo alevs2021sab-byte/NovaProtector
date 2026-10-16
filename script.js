@@ -2,6 +2,8 @@ const codeInput = document.getElementById("codeInput");
 const processButton = document.getElementById("processButton");
 const processLabel = document.getElementById("processLabel");
 const clearButton = document.getElementById("clearButton");
+const fileButton = document.getElementById("fileButton");
+const fileInput = document.getElementById("fileInput");
 const charCount = document.getElementById("charCount");
 const notice = document.getElementById("notice");
 const resultPanel = document.getElementById("resultPanel");
@@ -98,6 +100,37 @@ clearButton.addEventListener("click", () => {
   codeInput.focus();
 });
 
+
+const MAX_FILE_BYTES = 2 * 1024 * 1024; // 2 MB
+
+fileButton.addEventListener("click", () => fileInput.click());
+
+fileInput.addEventListener("change", () => {
+  const file = fileInput.files && fileInput.files[0];
+  fileInput.value = "";
+  if (!file) return;
+
+  if (file.size > MAX_FILE_BYTES) {
+    showNotice("El archivo es demasiado grande (máx. 2 MB).", "err");
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    const text = String(reader.result || "");
+    if (!text.trim()) {
+      showNotice("El archivo está vacío.", "err");
+      return;
+    }
+    codeInput.value = text;
+    updateCount();
+    showNotice("Archivo cargado: " + file.name, "ok");
+    codeInput.focus();
+  };
+  reader.onerror = () => showNotice("No se pudo leer el archivo.", "err");
+  reader.readAsText(file);
+});
+
 processButton.addEventListener("click", processCode);
 codeInput.addEventListener("input", updateCount);
 codeInput.addEventListener("keydown", (e) => {
@@ -105,5 +138,5 @@ codeInput.addEventListener("keydown", (e) => {
 });
 
 updateCount();
-che
-  ckService();
+checkService();
+    

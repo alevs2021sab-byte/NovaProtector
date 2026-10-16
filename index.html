@@ -104,6 +104,11 @@
           <textarea id="codeInput" placeholder="-- Pega tu script LuaU aquí&#10;print('Hello NovaProtector')" spellcheck="false"></textarea>
 
           <div class="studio-actions">
+            <input type="file" id="fileInput" accept=".lua,.txt,.luau,text/plain" hidden />
+            <button type="button" class="btn btn-ghost" id="fileButton" title="Cargar archivo .lua o .txt">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 16V4M12 4l-4 4M12 4l4 4M4 20h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Archivo
+            </button>
             <button type="button" class="btn btn-ghost" id="clearButton">Limpiar</button>
             <button type="button" class="btn btn-primary" id="processButton">
               <span class="btn-shine"></span>
@@ -148,5 +153,4 @@
     </div>
   </footer>
 </body>
-    </html>
-  
+</html>

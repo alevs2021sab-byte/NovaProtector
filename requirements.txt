@@ -1,3 +1,1 @@
-
-# NovaProtector utiliza la biblioteca estándar de Python
-.
+# stdlib only

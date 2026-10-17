@@ -65,7 +65,7 @@ async function processCode() {
       throw new Error(data.blobError || "No se pudo guardar en Blob");
     }
 
-    const raw = data.fileUrl || data.blobUrl;
+    const raw = data.fileUrl;
     const ls = 'loadstring(game:HttpGet("' + raw + '"))()';
     resultUrl.value = ls;
     openButton.href = raw;

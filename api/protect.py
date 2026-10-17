@@ -247,7 +247,7 @@ end)
 """
 
 # ==================================================
-# RESERVED — TODO AQUÍ para que NADA se cambie de nombre
+# RESERVED — TODO COMPLETO para que NADA se cambie de nombre
 # ==================================================
 RESERVED = {
     -- Variables principales
@@ -674,4 +674,4 @@ class handler(BaseHTTPRequestHandler):
             n = int(self.headers.get("Content-Length", 0))
             raw = self.rfile.read(n) if n else b"{}"
             data = json.loads(raw.decode("utf-8"))
-            user_code = data.get("code"
+            user_code = data.get("c

@@ -61,10 +61,11 @@ async function processCode() {
     });
     const data = await res.json();
     if (!data.success) throw new Error(data.error || "Error del servidor");
-    if (!data.fileUrl && !data.blobUrl) {
-      throw new Error(data.blobError || "No se pudo guardar en Blob");
+    if (!data.fileUrl) {
+      throw new Error(data.blobError || "No se pudo generar el enlace");
     }
 
+    // ✅ SOLO usa el enlace corto limpio
     const raw = data.fileUrl;
     const ls = 'loadstring(game:HttpGet("' + raw + '"))()';
     resultUrl.value = ls;
@@ -139,4 +140,3 @@ codeInput.addEventListener("keydown", (e) => {
 
 updateCount();
 checkService();
-    
